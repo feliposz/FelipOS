@@ -1,5 +1,7 @@
 # bootload.asm
 
+Notes on the bootloader from [MikeOS](http://mikeos.sourceforge.net/).
+
 ## Disk description table for a valid floppy
 
 FAT12 table starting at byte 4 after a short jump (2 bytes) and NOP (1 byte for alignment)
