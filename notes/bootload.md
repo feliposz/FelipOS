@@ -45,9 +45,9 @@ Routine to calculate Head/Track/Sector from Logical sector:
     - AX = logical sector
 - Output
     - Sector (CL) = Logical Sector % SectorsPerTrack + 1
-    - Head (DH) = (Logical Sector / SectorsPerTrack) / Sides
-    - Track (DH) = (Logical Sector / SectorsPerTrack) % Sides
-    - Set correct device (saved above)
+    - Head (DH) = (Logical Sector / SectorsPerTrack) % Sides
+    - Track (CH) = (Logical Sector / SectorsPerTrack) / Sides
+    - Drive (DL) Set correct device (saved above)
 
 Read root directory
 - Logical sector 19
