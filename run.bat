@@ -1,5 +1,7 @@
 @echo off
 
+mdkir bin\
+
 echo * Building bootload *
 nasm source\bootload.asm -f bin -o bin\bootload.bin
 if %errorlevel% neq 0 goto fail
