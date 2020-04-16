@@ -33,23 +33,55 @@ start:
 
     mov [bootdev], dl
 
+read_dir:
+    mov ax, 19      ; root directory
+    call logical_to_hts
+
+    mov bx, ds
+    mov es, bx
+    mov bx, buffer  ; load data into buffer pointed by es:bx
+
+    mov ah, 2       ; read sectors function
+    mov al, 14      ; # of sectors (14 = size of root directory)
+    int 0x13        ; bios disk services
+
+    jnc search_dir
+
+    call reset_floppy
+    jnc read_dir
+
+    jmp floppy_fail
+
+search_dir:
+    cld
+    mov di, buffer
+    mov cx, [RootDirEntries]
+
+.check_entry:
+    push cx
+    mov si, kernel_file
+    mov cx, 11
+    rep cmpsb               ; compare entry to filename
+    je load_kernel
+    add di, 32              ; advance to next entry
+    pop cx
+    loop .check_entry
+
+    mov si, err_kernel
+    call print_string
+    call reset
+    jmp $
+
+load_kernel:
     mov si, msg_ok
     call print_string
-
-    mov ax, 0
-    call debug_hts
-
-    mov ax, 0x13
-    call debug_hts
-
-    mov ax, 0x24e
-    call debug_hts
-
-    mov ax, 2879
-    call debug_hts
-
     call reset
+    jmp $
 
+floppy_fail:
+    mov si, err_floppy
+    call print_string
+    call reset
     jmp $
 
 ; print nul terminated string pointed by SI
@@ -147,6 +179,11 @@ debug_hts:
     mov si, debug_msg_device
     call print_string
 
+    mov dh, [debug_head]
+    mov ch, [debug_track]
+    mov cl, [debug_sector]
+    mov dl, [debug_dev]
+
     ret
 
 debug_msg_logical db ' < logical sector', 13, 10, 0
@@ -154,15 +191,19 @@ debug_msg_head    db ' < head', 13, 10, 0
 debug_msg_track   db ' < track', 13, 10, 0
 debug_msg_sector  db ' < sector', 13, 10, 0
 debug_msg_device  db ' < device', 13, 10, 0
-
 debug_head        db 0
 debug_track       db 0
 debug_sector      db 0
 debug_dev         db 0
 
-msg_ok  db 'boot ok', 13, 10, 0
-hex_dig db '0123456789ABCDEF'
-bootdev db 0
+msg_ok            db 'ok', 13, 10, 0
+err_floppy        db 'floppy error', 13, 10, 0
+err_kernel        db 'kernel not found', 13, 10, 0
+kernel_file       db 'KERNEL  BIN'
+hex_dig           db '0123456789ABCDEF'
+bootdev           db 0
 
 times 510-($-$$) db 0 ; fill sector with zeros
 dw 0xaa55             ; boot signature
+
+buffer:

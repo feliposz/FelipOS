@@ -53,7 +53,7 @@ Read root directory
 - Logical sector 19
 - Point ES:BX to buffer
 - Load 14 sectors (AH=function 2, AL=14 sectors)
-- On carry (success) go to search dir, otherwise reset floppy and try again
+- On NOT carry (success) go to search dir, otherwise reset floppy and try again
 
 Search dir
 - Point ES:DI to buffer
