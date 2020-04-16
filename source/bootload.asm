@@ -1,7 +1,13 @@
+; A simple bootloader for FelipOS
+;
+; Searches root directory for KERNEL.BIN file, load it into address 2000:0000 and jump there
+
 bits 16
 
-jmp short start
-nop
+    jmp short start
+    nop ; for byte alignment
+
+; FAT12 descriptor table
 
 OEMLabel            db 'FELIBOOT'
 BytesPerSector      dw 512
@@ -62,7 +68,7 @@ search_kernel:
     mov di, buffer
     mov cx, [RootDirEntries]
 
-.next:
+.next_entry:
     push cx
     push di
     mov si, kernel_file
@@ -72,7 +78,7 @@ search_kernel:
     pop di
     add di, 32          ; advance to next entry
     pop cx
-    loop .next
+    loop .next_entry
 
 no_kernel:
     mov si, err_kernel
@@ -103,19 +109,39 @@ read_fat:
 
     jmp floppy_fail
 
+; load kernel file into memory starting at 2000:0000
 kernel_load:
+    mov bx, 0x2000
+    mov es, bx
+    xor bx, bx
+    mov [pointer], bx
 
 .load_cluster:
+    mov ax, [cluster]   ; is last cluster?
+    cmp ax, 0x0ff0      ; last cluster indicator can be 0xff0, 0xff8 or 0xfff
+    jge kernel_complete
+
+    ; User Data Offset = ReservedForBoot + SectorsPerFat*NumberOfFats + RootDirEntries*32/BytesPerSector - 2 <= reserved clusters on FAT
     mov ax, [cluster]
-    call print_word
+    add ax, 31
+    call logical_to_hts
 
-    ; TODO: code to load current cluster
+    mov bx, [pointer]
+    mov ah, 2         ; read sectors function
+    mov al, 1         ; read 1 sector
+    stc
+    int 0x13          ; bios disk services
+    jnc .cluster_ok
 
-    mov ax, [cluster]  ; is last cluster?
-    cmp ax, 0x0fff
-    je .end
+    ; retry on error
+    call reset_floppy
+    jnc .load_cluster  
+    jmp floppy_fail
 
-.calc_next:
+.cluster_ok:
+    mov ax, 512        ; advance pointer
+    add [pointer], ax
+
     ; clusters are stored as 12-bit in FAT12
     ; calculate cluster offset in table
     ; offset = cluster * 3 / 2
@@ -129,22 +155,21 @@ kernel_load:
     ; check alignment
     mov ax, [cluster]
     test ax, 1
-    jz .even
+    jz .even_cluster
 
-.odd:
+.odd_cluster:
     shr dx, 4           ; aligned to left, shift it right 4 bits
     mov [cluster], dx
     jmp .load_cluster
 
-.even:                  ; aligned to right, discard 4 high bits
+.even_cluster:          ; aligned to right, discard 4 high bits
     and dx, 0x0fff
     mov [cluster], dx
     jmp .load_cluster
 
-.end:
-    mov si, msg_ok
-    call print_string
-    jmp reset
+kernel_complete:
+    mov dl, [bootdev]
+    jmp 0x2000:0x0000
 
 ; print nul terminated string pointed by SI
 print_string:
@@ -186,7 +211,6 @@ print_word:
     int 0x10
     ret
 
-
 ; wait keypress and reboot
 reset:
     mov ax, 0
@@ -215,68 +239,16 @@ logical_to_hts:
     mov dl, [bootdev]
     ret
 
-; temporary debug routine to display values for logical_to_hts
-; debug_hts:
-;     push ax
-;     mov al, ah
-;     call print_byte
-;     pop ax
-;     push ax
-;     call print_byte
-;     mov si, debug_msg_logical
-;     call print_string
+; bootloader variables
 
-;     pop ax
-;     call logical_to_hts
-;     mov [debug_head], dh
-;     mov [debug_track], ch
-;     mov [debug_sector], cl
-;     mov [debug_dev], dl
-
-;     mov al, [debug_head]
-;     call print_byte
-;     mov si, debug_msg_head
-;     call print_string
-
-;     mov al, [debug_track]
-;     call print_byte
-;     mov si, debug_msg_track
-;     call print_string
-
-;     mov al, [debug_sector]
-;     call print_byte
-;     mov si, debug_msg_sector
-;     call print_string
-
-;     mov al, [debug_dev]
-;     call print_byte
-;     mov si, debug_msg_device
-;     call print_string
-
-;     mov dh, [debug_head]
-;     mov ch, [debug_track]
-;     mov cl, [debug_sector]
-;     mov dl, [debug_dev]
-
-;     ret
-
-; debug_msg_logical db ' < logical sector', 13, 10, 0
-; debug_msg_head    db ' < head', 13, 10, 0
-; debug_msg_track   db ' < track', 13, 10, 0
-; debug_msg_sector  db ' < sector', 13, 10, 0
-; debug_msg_device  db ' < device', 13, 10, 0
-; debug_head        db 0
-; debug_track       db 0
-; debug_sector      db 0
-; debug_dev         db 0
-
-msg_ok            db 'ok', 13, 10, 0
 err_floppy        db 'floppy error', 13, 10, 0
-err_kernel        db 'kernel not found', 13, 10, 0
+err_kernel        db 'kernel missing', 13, 10, 0
 kernel_file       db 'KERNEL  BIN'
 hex_dig           db '0123456789ABCDEF'
 bootdev           db 0
 cluster           dw 0
+pointer           dw 0
+user_offset       dw 0
 
 times 510-($-$$) db 0 ; fill sector with zeros
 dw 0xaa55             ; boot signature
