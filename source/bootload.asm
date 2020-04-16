@@ -55,8 +55,7 @@ read_root_dir:
 floppy_fail:
     mov si, err_floppy
     call print_string
-    call reset
-    jmp $
+    jmp reset
 
 search_kernel:
     cld
@@ -69,7 +68,7 @@ search_kernel:
     mov si, kernel_file
     mov cx, 11
     rep cmpsb           ; compare entry to filename
-    je load_kernel      ; kernel found
+    je kernel_found
     pop di
     add di, 32          ; advance to next entry
     pop cx
@@ -78,14 +77,74 @@ search_kernel:
 no_kernel:
     mov si, err_kernel
     call print_string
-    call reset
-    jmp $
+    jmp reset
 
-load_kernel:
+kernel_found:
+    mov bx, [es:di+15] ; point to first cluster (pos 26 = 11 for filename + 15)
+    mov [cluster], bx
+
+read_fat:
+    mov ax, 1       ; 1st fat entry
+    call logical_to_hts
+
+    mov bx, ds
+    mov es, bx
+    mov bx, buffer  ; load data into buffer pointed by es:bx
+
+    mov ah, 2       ; read sectors function
+    mov al, [SectorsPerFat]
+
+    stc
+    int 0x13        ; bios disk services
+    jnc kernel_load
+
+    call reset_floppy
+    jnc read_fat
+
+    jmp floppy_fail
+
+kernel_load:
+
+.load_cluster:
+    mov ax, [cluster]
+    call print_word
+
+    ; TODO: code to load current cluster
+
+    mov ax, [cluster]  ; is last cluster?
+    cmp ax, 0x0fff
+    je .end
+
+.calc_next:
+    ; clusters are stored as 12-bit in FAT12
+    ; calculate cluster offset in table
+    ; offset = cluster * 3 / 2
+    mov ax, [cluster]
+    shl ax, 1
+    add ax, [cluster]
+    shr ax, 1
+    mov bx, ax
+    mov dx, [buffer+bx] ; loaded 16-bits
+
+    ; check alignment
+    mov ax, [cluster]
+    test ax, 1
+    jz .even
+
+.odd:
+    shr dx, 4           ; aligned to left, shift it right 4 bits
+    mov [cluster], dx
+    jmp .load_cluster
+
+.even:                  ; aligned to right, discard 4 high bits
+    and dx, 0x0fff
+    mov [cluster], dx
+    jmp .load_cluster
+
+.end:
     mov si, msg_ok
     call print_string
-    call reset
-    jmp $
+    jmp reset
 
 ; print nul terminated string pointed by SI
 print_string:
@@ -116,13 +175,25 @@ print_byte:
     int 0x10
     ret
 
+print_word:
+    push ax
+    mov al, ah
+    call print_byte
+    pop ax
+    call print_byte
+    mov al, ' '
+    mov ah, 0x0e
+    int 0x10
+    ret
+
+
 ; wait keypress and reboot
 reset:
     mov ax, 0
     int 0x16
     mov ax, 0
     int 0x19
-    ret
+    jmp $
 
 ; reset floppy drive to retry operation
 reset_floppy:
@@ -205,6 +276,7 @@ err_kernel        db 'kernel not found', 13, 10, 0
 kernel_file       db 'KERNEL  BIN'
 hex_dig           db '0123456789ABCDEF'
 bootdev           db 0
+cluster           dw 0
 
 times 510-($-$$) db 0 ; fill sector with zeros
 dw 0xaa55             ; boot signature

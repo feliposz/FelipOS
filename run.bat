@@ -13,7 +13,10 @@ echo * Mounting image *
 imdisk -a -f bin\felipos.flp -s 1440K -m B: 
 
 echo * Adding dummy kernel.bin *
-copy nul b:\kernel.bin
+rem echo KERNEL > b:\kernel.bin
+copy C:\projetos\felipo\mikeos-4.6.1\source\kernel.bin b:\kernel.bin
+
+dir b:
 
 echo * Dismounting image *
 imdisk -D -m B:
