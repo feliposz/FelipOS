@@ -1,14 +1,18 @@
 @echo off
 
-mdkir bin\
+mkdir bin\
+
+cd source
 
 echo * Building bootload *
-nasm source\bootload.asm -f bin -o bin\bootload.bin
+nasm bootload.asm -f bin -o ..\bin\bootload.bin
 if %errorlevel% neq 0 goto fail
 
 echo * Building kernel *
-nasm source\kernel.asm -f bin -o bin\kernel.bin
+nasm kernel.asm -f bin -o ..\bin\kernel.bin
 if %errorlevel% neq 0 goto fail
+
+cd ..
 
 del bin\felipos.flp
 
