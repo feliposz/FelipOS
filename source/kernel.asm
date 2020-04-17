@@ -10,7 +10,7 @@ kernel_start:
     mov es, ax
     mov ds, ax
     mov ss, ax
-    mov sp, ffffh
+    mov sp, 0ffffh
     sti
 
 kernel_main:
@@ -20,8 +20,6 @@ kernel_main:
 
     ; halt
     jmp $
-
-sys_bootdev db 0
 
     %include 'features/cli.asm'
     %include 'features/screen.asm'
