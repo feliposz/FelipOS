@@ -18,8 +18,14 @@ kernel_main:
     ; start CLI
     call os_command_line
 
+    mov si, end_msg
+    call os_print_string
+
     ; halt
     jmp $
 
+end_msg db 'Exited', 13, 10, 0
+
     %include 'features/cli.asm'
     %include 'features/screen.asm'
+    %include 'features/string.asm'

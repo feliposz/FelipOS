@@ -8,18 +8,63 @@ get_command:
     mov ax, input
     mov bx, 78
     call os_input_string
-
     call os_print_newline
 
-    ; echo input for testing
+    mov ax, input
+    call os_string_uppercase
+
     mov si, input
-    call os_print_string
+    mov di, cls
+    call os_string_compare
+    jc cmd_cls
 
-    call os_print_newline
+    mov si, input
+    mov di, help
+    call os_string_compare
+    jc cmd_help
+
+    mov si, input
+    mov di, exit
+    call os_string_compare
+    jc cmd_exit
+
+    mov cl, 5
+    mov si, input
+    mov di, echo
+    call os_string_strincmp
+    jc cmd_echo
+
+    mov si, unknown_msg
+    call os_print_string
 
     jmp get_command
 
+cmd_exit:
     ret
 
-prompt db '>', 0
-input times 79 db 0
+cmd_cls:
+    call os_clear_screen
+    jmp get_command
+
+cmd_help:
+    mov si, help_msg
+    call os_print_string
+    jmp get_command
+
+cmd_echo:
+    mov ax, input
+    call os_string_lowercase ; just for testing
+    mov si, input
+    add si, 5
+    call os_print_string
+    call os_print_newline
+    jmp get_command
+
+echo        db 'ECHO '
+exit        db 'EXIT', 0
+cls         db 'CLS', 0
+help        db 'HELP', 0
+help_msg    db 'Commands: HELP, CLS, ECHO, EXIT', 13, 10, 0
+unknown_msg db 'Unknown command', 13, 10, 0
+prompt      db '>', 0
+input       times 79 db 0
