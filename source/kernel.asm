@@ -2,6 +2,9 @@ bits 16
 
     jmp kernel_start
 
+    %define OS_VERSION '0.0.1'
+    %define API_VERSION 17
+
 kernel_start:
 
     ; setup segments and stack pointer
@@ -24,8 +27,8 @@ kernel_main:
     ; halt
     jmp $
 
-end_msg db 'Exited', 13, 10, 0
-
     %include 'features/cli.asm'
     %include 'features/screen.asm'
     %include 'features/string.asm'
+
+end_msg db 'Exited', 13, 10, 0
