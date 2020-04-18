@@ -2,6 +2,7 @@ os_command_line:
     call os_clear_screen
 
 ; TEST DATE - BEGIN
+    mov ah, '-'
     mov al, 0
     call os_set_date_fmt
     mov bx, output
@@ -10,6 +11,7 @@ os_command_line:
     call os_print_string
     call os_print_newline
 
+    mov ah, '.'
     mov al, 1
     call os_set_date_fmt
     mov bx, output
@@ -18,7 +20,32 @@ os_command_line:
     call os_print_string
     call os_print_newline
 
+    mov ah, '\'
     mov al, 2
+    call os_set_date_fmt
+    mov bx, output
+    call os_get_date_string
+    mov si, output
+    call os_print_string
+    call os_print_newline
+
+    mov al, 128
+    call os_set_date_fmt
+    mov bx, output
+    call os_get_date_string
+    mov si, output
+    call os_print_string
+    call os_print_newline
+
+    mov al, 129
+    call os_set_date_fmt
+    mov bx, output
+    call os_get_date_string
+    mov si, output
+    call os_print_string
+    call os_print_newline
+
+    mov al, 130
     call os_set_date_fmt
     mov bx, output
     call os_get_date_string

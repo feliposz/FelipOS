@@ -171,14 +171,14 @@ os_set_time_fmt:
 ; If AX bit 7 = 1 = use name for months
 ; If AX bit 7 = 0, high byte = separator character
 os_set_date_fmt:
-    or ax, 1<<7
+    test ax, 1<<7
     jnz .no_sep
     mov byte [date_mon], 0
     mov [date_sep], ah
     jmp .sep
 .no_sep:
     mov byte [date_mon], 1
-    mov byte [date_sep], '/'
+    mov byte [date_sep], ' '
 .sep:
     and al, 3
     mov [date_fmt], al
@@ -227,22 +227,22 @@ os_get_time_string:
 .12hour_out:
     mov al, ch
     shr al, 4
-    add al, 48
+    add al, '0'
     mov [bx], al
     mov al, ch
     and al, 0fh
-    add al, 48
+    add al, '0'
     mov [bx+1], al
 
     mov byte [bx+2], ':'
 
     mov al, cl
     shr al, 4
-    add al, 48
+    add al, '0'
     mov [bx+3], al
     mov al, cl
     and al, 0fh
-    add al, 48
+    add al, '0'
     mov [bx+4], al
 
     mov byte [bx+5], ' '
@@ -260,20 +260,20 @@ os_get_time_string:
 .24hour_fmt:
     mov al, ch
     shr al, 4
-    add al, 48
+    add al, '0'
     mov [bx], al
     mov al, ch
     and al, 0fh
-    add al, 48
+    add al, '0'
     mov [bx+1], al
 
     mov al, cl
     shr al, 4
-    add al, 48
+    add al, '0'
     mov [bx+2], al
     mov al, cl
     and al, 0fh
-    add al, 48
+    add al, '0'
     mov [bx+3], al
 
     mov byte [bx+4], ' '
@@ -292,7 +292,7 @@ os_get_time_string:
 ; IN/OUT: BX = string location
 os_get_date_string:
     pusha
-    mov si, bx
+    mov di, bx
 .retry:
     mov ah, 4
     int 1ah
@@ -330,66 +330,131 @@ os_get_date_string:
     call .day
 
 .done:
-    mov byte [si], 0
+    mov byte [di], 0
     popa
     ret
 
 .sep:
     mov al, [date_sep]
-    mov byte [si], al
-    inc si
+    stosb
     ret
 
 .year:
     mov al, ch
     shr al, 4
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
     mov al, ch
     and al, 0fh
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
     mov al, cl
     shr al, 4
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
     mov al, cl
     and al, 0fh
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
     ret
 
 .month:
+    mov al, [date_mon]
+    or al, al
+    jnz .month_name
     mov al, dh
     shr al, 4
-    add al, 48
-    mov [si], al
-    inc si
+    or al, al
+    add al, '0'
+    stosb
     mov al, dh
     and al, 0fh
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
+    ret
+.month_name:
+    push cx
+    push dx
+    mov al, dh
+    call os_bcd_to_int
+    dec ax
+    mov cx, 3
+    mul cx
+    mov si, month_name
+    add si, ax
+    rep movsb
+    pop dx
+    pop cx
     ret
 
 .day:
     mov al, dl
     shr al, 4
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
     mov al, dl
     and al, 0fh
-    add al, 48
-    mov [si], al
-    inc si
+    add al, '0'
+    stosb
     ret
 
-time_fmt db 1
-date_fmt db 1
-date_mon db 0
-date_sep db '/'
+; ==========================================================
+; os_int_to_string -- Convert unsigned integer to string
+; IN: AX = signed int
+; OUT: AX = string location
+os_int_to_string:
+    pusha
+    mov di, int_string
+    or ax, ax
+    jnz .not_zero
+    mov dx, '0'
+    mov cx, 1
+    push dx
+    jmp .pop_digits
+.not_zero:
+    mov bx, 10
+    mov cx, 0
+.push_digits:
+    xor dx, dx
+    or ax, ax
+    jz .pop_digits
+    div bx
+    add dl, '0'
+    push dx
+    inc cx
+    jmp .push_digits
+.pop_digits:
+    pop dx
+    mov [di], dl
+    inc di
+    dec cx
+    or cx, cx
+    jnz .pop_digits
+.done:
+    mov byte [di], 0
+    popa
+    mov ax, int_string
+    ret
+
+; ==========================================================
+; os_sint_to_string -- Convert signed integer to string
+; IN: AX = signed int
+; OUT: AX = string location
+os_sint_to_string:
+    cmp ax, 0
+    jl .negative
+    call os_int_to_string
+    ret
+.negative:
+    neg ax
+    call os_int_to_string
+    mov ax, neg_string
+    ret
+
+time_fmt     db 0
+date_fmt     db 0
+date_mon     db 0
+date_sep     db '/'
+month_name   db 'JanFebMarAprMayJunJulAugSepOctNovDec'
+neg_string   db '-'
+int_string   times 7 db 0

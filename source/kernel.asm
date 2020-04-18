@@ -30,5 +30,6 @@ kernel_main:
     %include 'features/cli.asm'
     %include 'features/screen.asm'
     %include 'features/string.asm'
+    %include 'features/math.asm'
 
 end_msg db 'Exited', 13, 10, 0
