@@ -1,9 +1,11 @@
 bits 16
 
-    jmp kernel_start
-
     %define OS_VERSION '0.0.1'
     %define API_VERSION 17
+
+    disk_buffer equ 24576   ; 8k disk buffer located after OS code and before 32k (user space)
+
+    jmp kernel_start
 
 kernel_start:
 
@@ -15,6 +17,8 @@ kernel_start:
     mov ss, ax
     mov sp, 0ffffh
     sti
+
+    call disk_init
 
 kernel_main:
 
@@ -31,5 +35,6 @@ kernel_main:
     %include 'features/screen.asm'
     %include 'features/string.asm'
     %include 'features/math.asm'
+    %include 'features/disk.asm'
 
 end_msg db 'Exited', 13, 10, 0

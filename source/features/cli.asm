@@ -1,61 +1,7 @@
 os_command_line:
     call os_clear_screen
 
-; TEST DATE - BEGIN
-    mov ah, '-'
-    mov al, 0
-    call os_set_date_fmt
-    mov bx, output
-    call os_get_date_string
-    mov si, output
-    call os_print_string
-    call os_print_newline
-
-    mov ah, '.'
-    mov al, 1
-    call os_set_date_fmt
-    mov bx, output
-    call os_get_date_string
-    mov si, output
-    call os_print_string
-    call os_print_newline
-
-    mov ah, '\'
-    mov al, 2
-    call os_set_date_fmt
-    mov bx, output
-    call os_get_date_string
-    mov si, output
-    call os_print_string
-    call os_print_newline
-
-    mov al, 128
-    call os_set_date_fmt
-    mov bx, output
-    call os_get_date_string
-    mov si, output
-    call os_print_string
-    call os_print_newline
-
-    mov al, 129
-    call os_set_date_fmt
-    mov bx, output
-    call os_get_date_string
-    mov si, output
-    call os_print_string
-    call os_print_newline
-
-    mov al, 130
-    call os_set_date_fmt
-    mov bx, output
-    call os_get_date_string
-    mov si, output
-    call os_print_string
-    call os_print_newline
-; TEST DATE - END
-
     jmp cmd_ver
-
 
 get_command:
     mov si, prompt
@@ -97,6 +43,11 @@ get_command:
     mov di, ver
     call os_string_compare
     jc cmd_ver
+
+    mov si, input
+    mov di, dir
+    call os_string_compare
+    jc cmd_dir
 
     mov si, input
     mov di, help
@@ -170,17 +121,27 @@ cmd_time:
     call os_print_newline
     jmp get_command
 
+cmd_dir:
+    mov ax, temp
+    call os_get_file_list
+    mov si, temp
+    call os_print_string
+    call os_print_newline
+    jmp get_command
+
 echo        db 'ECHO', 0
 exit        db 'EXIT', 0
 cls         db 'CLS', 0
 ver         db 'VER', 0
+dir         db 'DIR', 0
 help        db 'HELP', 0
 date        db 'DATE', 0
 time        db 'TIME', 0
-help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, EXIT', 13, 10, 0
+help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, EXIT', 13, 10, 0
 unknown_msg db 'Unknown command', 13, 10, 0
 version_msg db 'FelipOS ', OS_VERSION, 13, 10, 0
 prompt      db '>', 0
 param_list  dw 0
 input       times 79 db 0
 output      times 20 db 0
+temp        times 2000 db 0
