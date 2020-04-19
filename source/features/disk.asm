@@ -1,5 +1,5 @@
 ; ==========================================================
-; os_get_file_list -- > Generate comma-separated string of files on floppy
+; os_get_file_list -- Generate comma-separated string of files on floppy
 ; IN/OUT: AX = location to store zero-terminated filename string
 os_get_file_list:
     call disk_read_root_dir
@@ -14,7 +14,7 @@ os_get_file_list:
     mov al, [si]
 
     cmp al, 0         ; first empty entry, skip the rest
-    je .end
+    je .end_list
     cmp al, 0e5h      ; erased file
     je .skip
 
@@ -29,18 +29,49 @@ os_get_file_list:
 
     push si
     push cx
-    mov cx, 11
-    rep movsb         ; copy filename as is (for now!)
+
+    mov cx, 8
+.copy_name:
+    cmp byte [si], ' '       ; TODO: handle spaces inside filename
+    je .skipspace_name
+    movsb
+    loop .copy_name
+    jmp .end_name
+.skipspace_name:
+    inc si
+    loop .skipspace_name
+.end_name:
+
+    cmp byte [si], ' '
+    je .end_ext
+    mov al, '.'
+    stosb
+
+    mov cx, 3
+.copy_ext:
+    cmp byte [si], ' '
+    je .skipspace_ext
+    movsb
+    loop .copy_ext
+    jmp .end_ext
+.skipspace_ext:
+    inc si
+    loop .skipspace_ext
+.end_ext:
+
     mov al, ','       ; separator
     stosb
+
     pop cx
     pop si
+
 .skip:
     add si, 32        ; advance to next entry
     loop .next_entry
 
-.end:
-    xor al, al        ; nul terminated
+.end_list:
+    dec di            ; overwrite last ',' whit nul terminator
+    xor al, al
     stosb
     popa
     ret
