@@ -124,8 +124,32 @@ cmd_time:
 cmd_dir:
     mov ax, temp
     call os_get_file_list
+
     mov si, temp
+.next_file:
+    mov al, ','
+    call os_string_tokenize
+    or di, di
+    jz .done
+
+    mov byte [di-1], 0
     call os_print_string
+
+    ; fill column with spaces according to filename size
+    mov cx, 21
+    add cx, si
+    sub cx, di
+
+.print_space:
+    mov al, ' '
+    mov ah, 0eh
+    int 10h
+    loop .print_space
+
+    mov si, di
+    jmp .next_file
+
+.done:
     call os_print_newline
     jmp get_command
 
