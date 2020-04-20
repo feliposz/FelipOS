@@ -352,10 +352,13 @@ display_dir_entry:
     pop si
 
     ; file size in bytes
-    mov di, output + 70
     mov ax, [si + 1ch]
-    call os_int_to_string ; TODO: change to use os_long_int_to_string
-    mov si, ax
+    mov dx, [si + 1eh]
+    mov bx, 10
+    call os_long_int_to_string
+    mov si, di
+
+    mov di, output + 70
 .copy_size:
     cmp byte [si], 0
     je .end_size

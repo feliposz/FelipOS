@@ -451,6 +451,88 @@ os_sint_to_string:
     mov ax, neg_string
     ret
 
+; ==========================================================
+; os_long_int_to_string -- Convert value in DX:AX to string
+; IN: DX:AX = long unsigned integer, BX = number base, DI = string location
+; OUT: DI = location of converted string
+os_long_int_to_string:
+    pusha
+
+    mov di, long_string
+    mov byte [di], 0
+
+    cmp bx, 37
+    ja .done
+
+    cmp bx, 0
+    je .done
+
+.conversion:            ; divide dx:ax (32-bit) by bx (base)
+    mov cx, 0
+    xchg ax, cx
+    xchg ax, dx
+    div bx
+    xchg ax, cx
+    div bx
+    xchg cx, dx         ; cx = remainder, dx:ax = quotient
+
+    ; digits will be added in reverse order
+    cmp cx, 9
+    jle .is_digit
+    add cx, 'A'-10
+    jmp .not_digit
+.is_digit:
+    add cx, '0'
+.not_digit:
+    mov [di], cl
+    inc di
+    mov cx, dx
+    or cx, ax
+    jnz .conversion
+
+    mov al, 0 ; add nul terminator
+    stosb
+
+    mov si, long_string
+    call os_string_reverse
+
+.done:
+    popa
+    mov di, long_string
+    ret
+
+; os_string_reverse -- Reverse the characters in a string
+; IN: SI = string location
+os_string_reverse:
+    pusha
+
+    ; point DI to last char
+    mov di, si
+.advance:
+    cmp byte [di], 0
+    jz .end_reached
+    inc di
+    jmp .advance
+
+.end_reached:
+    dec di
+
+    ; swap SI and DI, move SI left and DI right
+.reverse_loop:
+    cmp si, di
+    jae .done
+    mov al, [si]
+    mov bl, [di]
+    mov [si], bl
+    mov [di], al
+    inc si
+    dec di
+    jmp .reverse_loop
+
+.done:
+    popa
+    ret
+
 time_fmt     db 0
 date_fmt     db 0
 date_mon     db 0
@@ -458,3 +540,4 @@ date_sep     db '/'
 month_name   db 'JanFebMarAprMayJunJulAugSepOctNovDec'
 neg_string   db '-'
 int_string   times 7 db 0
+long_string  times 11 db 0
