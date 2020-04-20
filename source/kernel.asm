@@ -4,6 +4,7 @@ bits 16
     %define API_VERSION 17
 
     disk_buffer equ 24576   ; 8k disk buffer located after OS code and before 32k (user space)
+    user_space  equ 32768
 
     jmp kernel_start
 

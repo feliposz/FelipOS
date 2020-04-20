@@ -26,6 +26,7 @@ echo * Adding dummy kernel.bin *
 copy bin\kernel.bin b:\
 
 echo * Add some test cases for DIR *
+echo hello, world! > b:\hello.txt
 copy ..\..\mikeos-4.6.1\programs\*.* b:\
 dir b:
 

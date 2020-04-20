@@ -88,6 +88,103 @@ os_get_file_size:
     ret
 
 ; ==========================================================
+; os_load_file -- Load file into RAM
+; IN: AX = location of filename, CX = location in RAM to load file
+; OUT: BX = file size (in bytes), carry set if file not found
+os_load_file:
+    push ax
+    push cx
+    push dx
+    push di
+    mov [file_pointer], cx
+    call int_filename_convert
+    call disk_read_root_dir
+    call disk_get_root_entry
+    jc .done
+
+    mov bx, [di + 1ch]
+    mov [file_size], bx
+    mov bx, [di + 1ah]
+    mov [disk_cluster], bx
+
+.read_fat:
+    mov ax, 1            ; 1st fat entry
+    call disk_convert_l2hts
+
+    mov bx, disk_buffer  ; load data into buffer pointed by es:bx
+    mov ah, 2            ; read sectors function
+    mov al, [SectorsPerFat]
+    stc
+    int 0x13             ; bios disk services
+    jnc .load_cluster
+
+    call disk_reset_drive
+    jnc .read_fat
+
+    jmp .done
+
+.load_cluster:
+    mov ax, [disk_cluster]   ; is last cluster?
+    cmp ax, 0x0ff0      ; last cluster indicator can be 0xff0, 0xff8 or 0xfff
+    jge .file_complete
+
+    ; User Data Offset = ReservedForBoot + SectorsPerFat*NumberOfFats + RootDirEntries*32/BytesPerSector - 2 <= reserved clusters on FAT
+    mov ax, [disk_cluster]
+    add ax, 31
+    call disk_convert_l2hts
+
+    mov bx, [file_pointer]
+    mov ah, 2         ; read sectors function
+    mov al, 1         ; read 1 sector
+    stc
+    int 0x13          ; bios disk services
+    jnc .cluster_ok
+
+    ; retry on error
+    call disk_reset_drive
+    jnc .load_cluster
+    jmp .done
+
+.cluster_ok:
+    mov ax, 512        ; advance pointer
+    add [file_pointer], ax
+
+    ; clusters are stored as 12-bit in FAT12
+    ; calculate cluster offset in table
+    ; offset = cluster * 3 / 2
+    mov ax, [disk_cluster]
+    shl ax, 1
+    add ax, [disk_cluster]
+    shr ax, 1
+    mov bx, ax
+    mov dx, [disk_buffer+bx] ; loaded 16-bits
+
+    ; check alignment
+    mov ax, [disk_cluster]
+    test ax, 1
+    jz .even_cluster
+
+.odd_cluster:
+    shr dx, 4           ; aligned to left, shift it right 4 bits
+    mov [disk_cluster], dx
+    jmp .load_cluster
+
+.even_cluster:          ; aligned to right, discard 4 high bits
+    and dx, 0x0fff
+    mov [disk_cluster], dx
+    jmp .load_cluster
+
+.file_complete:
+    clc
+    mov bx, [file_size]
+.done:
+    pop di
+    pop dx
+    pop cx
+    pop ax
+    ret
+
+; ==========================================================
 ; INTERNAL OS ROUTINES
 ; Not accessible to user programs
 
@@ -258,5 +355,9 @@ disk_init:
 RootDirEntries      dw 224
 SectorsPerTrack     dw 18
 Sides               dw 2
+SectorsPerFat       dw 9
 bootdev             db 0
 filename_converted  times 12 db 0
+disk_cluster        dw 0
+file_size           dw 0
+file_pointer        dw 0
