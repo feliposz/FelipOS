@@ -79,6 +79,11 @@ get_command:
     call os_string_compare
     jc cmd_echo
 
+    mov si, input
+    mov di, size
+    call os_string_compare
+    jc cmd_size
+
     mov si, unknown_msg
     call os_print_string
 
@@ -207,11 +212,15 @@ cmd_ls:
     push si
     mov si, ls_nextpage
     call os_print_string
-    call os_wait_for_key
-    call os_clear_screen
     pop si
+    call os_wait_for_key
+    cmp al, 27
+    je .escape
+    call os_clear_screen
     jmp .display_header
 
+.escape:
+    call os_print_newline
 .end_list:
     jmp get_command
 
@@ -436,7 +445,28 @@ display_dir_entry:
     stosb
     ret
 
+cmd_size:
+    mov si, [param_list]
+    or si, si
+    jz .error
+    mov ax, si
+    call os_string_uppercase
+    call os_get_file_size
+    jc .error
+    push bx
+    mov si, size_msg
+    call os_print_string
+    pop ax
+    call os_int_to_string
+    mov si, ax
+    call os_print_string
+    call os_print_newline
+    jmp get_command
 
+.error:
+    mov si, nofile_msg
+    call os_print_string
+    jmp get_command
 
 echo        db 'ECHO', 0
 exit        db 'EXIT', 0
@@ -447,8 +477,11 @@ ls          db 'LS', 0
 help        db 'HELP', 0
 date        db 'DATE', 0
 time        db 'TIME', 0
-help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, EXIT', 13, 10, 0
+size        db 'SIZE', 0
+help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, SIZE, EXIT', 13, 10, 0
 unknown_msg db 'Unknown command', 13, 10, 0
+size_msg    db 'File size (bytes): ', 0
+nofile_msg  db 'File not found or invalid filename', 13, 10, 0
 version_msg db 'FelipOS ', OS_VERSION, 13, 10, 0
 ls_header   db '    Name         attr         created          last write      first  bytes     ', 0
 ls_nextpage db 'Press key for next page', 0

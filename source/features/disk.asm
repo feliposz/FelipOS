@@ -77,6 +77,123 @@ os_get_file_list:
     ret
 
 ; ==========================================================
+; os_get_file_size --  Get file size information for specified file
+; IN: AX = filename
+; OUT: BX = file size in bytes (up to 64K) or carry set if file not found
+os_get_file_size:
+    call int_filename_convert
+    call disk_read_root_dir
+    call disk_get_root_entry
+    mov bx, [di + 1ch]  ; lower word of file size in dir entry
+    ret
+
+; ==========================================================
+; INTERNAL OS ROUTINES
+; Not accessible to user programs
+
+; ==========================================================
+; int_filename_convert --  Change 'TEST.BIN' into 'TEST    BIN' as per FAT12
+; IN: AX = filename string
+; OUT: AX = location of converted string (carry set if invalid)
+int_filename_convert:
+    pusha
+    mov si, ax
+
+    mov cx, 11
+    mov di, filename_converted
+    mov al, ' '
+    rep stosb
+
+    mov di, filename_converted
+.copy_name:
+    cmp byte [si], '.'
+    je .end_name
+    cmp byte [si], 0
+    je .done
+    movsb
+    jmp .copy_name
+.end_name:
+
+    inc si
+    mov di, filename_converted + 8
+
+.copy_ext:
+    cmp byte [si], 0
+    je .done
+    movsb
+    jmp .copy_ext
+.end_ext:
+
+.done:
+    popa
+    mov ax, filename_converted
+    ret
+
+; ==========================================================
+; disk_get_root_entry --  Search RAM copy of root dir for file entry
+; IN: AX = filename
+; OUT: DI = location in disk_buffer of root dir entry, or carry set if file not found
+disk_get_root_entry:
+    push ax
+    push cx
+    push si
+
+    cld
+    mov si, ax
+    mov di, disk_buffer
+    mov cx, [RootDirEntries]
+
+.next_entry:
+    mov al, [si]
+
+    cmp al, 0         ; first empty entry, skip the rest
+    je .not_found
+    cmp al, 0e5h      ; erased file
+    je .skip
+
+    mov al, [si+0bh]
+
+    test al, 08       ; volume label
+    jnz .skip
+    test al, 10h      ; subdirectory
+    jnz .skip
+    test al, 0fh      ; vfat long file name marker
+    jnz .skip
+
+    push si
+    push di
+    push cx
+
+    mov cx, 11
+    rep cmpsb
+    je .found
+
+    pop cx
+    pop di
+    pop si
+
+.skip:
+    add di, 32        ; advance to next entry
+    loop .next_entry
+    jmp .not_found
+
+.found:
+    pop cx
+    pop di
+    pop si
+    clc
+    jmp .done
+
+.not_found:
+    stc
+
+.done:
+    pop si
+    pop cx
+    pop ax
+    ret
+
+; ==========================================================
 ; disk_read_root_dir -- > Get the root directory contents
 ; IN: Nothing
 ; OUT: root directory contents in disk_buffer, carry set if error
@@ -142,3 +259,4 @@ RootDirEntries      dw 224
 SectorsPerTrack     dw 18
 Sides               dw 2
 bootdev             db 0
+filename_converted  times 12 db 0

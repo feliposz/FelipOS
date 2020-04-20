@@ -115,8 +115,8 @@ os_string_chomp:
     jmp .shift_left
 .done_shift:
     mov byte [di], 0       ; restore terminator
-    mov si, ax
-    mov di, ax
+    mov si, bx
+    mov di, bx
 .scan_trail:               ; scan for first space after non-space character
     mov al, [si]
     or al, al
@@ -540,4 +540,4 @@ date_sep     db '/'
 month_name   db 'JanFebMarAprMayJunJulAugSepOctNovDec'
 neg_string   db '-'
 int_string   times 7 db 0
-long_string  times 11 db 0
+long_string  times 33 db 0
