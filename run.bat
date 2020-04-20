@@ -26,17 +26,7 @@ echo * Adding dummy kernel.bin *
 copy bin\kernel.bin b:\
 
 echo * Add some test cases for DIR *
-copy nul b:\deleted.txt
-del b:\deleted.txt
-mkdir b:\dir
-copy nul b:\noext
-copy nul b:\file.a
-copy nul b:\file.bb
-copy nul b:\file.ccc
-copy nul b:\a.001
-copy nul b:\bbbb.004
-copy nul b:\ccccccc.007
-copy nul b:\dddddddd.008
+copy ..\..\mikeos-4.6.1\programs\*.* b:\
 dir b:
 
 echo * Dismounting image *

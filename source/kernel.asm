@@ -36,5 +36,6 @@ kernel_main:
     %include 'features/string.asm'
     %include 'features/math.asm'
     %include 'features/disk.asm'
+    %include 'features/keyboard.asm'
 
 end_msg db 'Exited', 13, 10, 0
