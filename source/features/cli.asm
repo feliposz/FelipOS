@@ -89,6 +89,11 @@ get_command:
     call os_string_compare
     jc cmd_cat
 
+    mov si, input
+    mov di, ren
+    call os_string_compare
+    jc cmd_ren
+
     mov si, unknown_msg
     call os_print_string
 
@@ -494,10 +499,7 @@ cmd_cat:
     int 10h
     jmp .next
 .newline:
-    mov al, 13
-    int 10h
-    mov al, 10
-    int 10h
+    call os_print_newline
 .next:
     loop .loop_cat
 
@@ -509,6 +511,46 @@ cmd_cat:
     call os_print_string
     jmp get_command
 
+cmd_ren:
+    mov si, [param_list]
+    or si, si
+    jz .error
+
+    mov ax, [param_list]
+    call os_string_chomp
+    call os_string_uppercase
+
+    mov al, ' '
+    call os_string_tokenize
+    or di, di
+    jz .error_target
+    mov byte [di-1], 0
+    mov [param_other], di
+
+    mov ax, [param_list]    ; check source file
+    call os_file_exists
+    jc .error
+
+    mov ax, [param_other]   ; check target file
+    call os_string_chomp
+    call os_file_exists
+    jnc .error_target
+
+    mov ax, [param_list]
+    mov bx, [param_other]
+    call os_rename_file
+
+    jmp get_command
+
+.error:
+    mov si, nofile_msg
+    call os_print_string
+    jmp get_command
+
+.error_target:
+    mov si, target_msg
+    call os_print_string
+    jmp get_command
 
 echo        db 'ECHO', 0
 exit        db 'EXIT', 0
@@ -521,15 +563,18 @@ date        db 'DATE', 0
 time        db 'TIME', 0
 size        db 'SIZE', 0
 cat         db 'CAT', 0
-help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, CAT, SIZE, EXIT', 13, 10, 0
+ren         db 'REN', 0
+help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, CAT, REN, SIZE, EXIT', 13, 10, 0
 unknown_msg db 'Unknown command', 13, 10, 0
 size_msg    db 'File size (bytes): ', 0
 nofile_msg  db 'File not found or invalid filename', 13, 10, 0
+target_msg  db 'Invalid target filename', 13, 10, 0
 version_msg db 'FelipOS ', OS_VERSION, 13, 10, 0
 ls_header   db '    Name         attr         created          last write      first  bytes     ', 0
 ls_nextpage db 'Press key for next page', 0
 prompt      db '>', 0
 param_list  dw 0
+param_other dw 0
 input       times 79 db 0
 output      times 81 db 0 ; 1 extra for nul terminator
 temp        times 2000 db 0

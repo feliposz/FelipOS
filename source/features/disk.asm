@@ -107,21 +107,8 @@ os_load_file:
     mov bx, [di + 1ah]
     mov [disk_cluster], bx
 
-.read_fat:
-    mov ax, 1            ; 1st fat entry
-    call disk_convert_l2hts
-
-    mov bx, disk_buffer  ; load data into buffer pointed by es:bx
-    mov ah, 2            ; read sectors function
-    mov al, [SectorsPerFat]
-    stc
-    int 0x13             ; bios disk services
-    jnc .load_cluster
-
-    call disk_reset_drive
-    jnc .read_fat
-
-    jmp .done
+    call disk_read_fat
+    jc .done
 
 .load_cluster:
     mov ax, [disk_cluster]   ; is last cluster?
@@ -182,6 +169,38 @@ os_load_file:
     pop dx
     pop cx
     pop ax
+    ret
+
+; ==========================================================
+; os_file_exists -- Check for presence of file on the floppy
+; IN: AX = filename location
+; OUT: carry clear if found, set if not
+os_file_exists:
+    call int_filename_convert
+    call disk_read_root_dir
+    call disk_get_root_entry
+    ret
+
+; ==========================================================
+; os_rename_file -- Change the name of a file on the disk
+; IN: AX = filename to change, BX = new filename (zero-terminated strings)
+; OUT: carry set on error
+os_rename_file:
+    call disk_read_root_dir
+    jc .done
+    call int_filename_convert
+    jc .done
+    call disk_get_root_entry ; DI = file entry
+    jc .done
+
+    mov ax, bx
+    call int_filename_convert
+    mov si, ax
+    mov cx, 11
+    rep movsb
+
+    call disk_write_root_dir
+.done:
     ret
 
 ; ==========================================================
@@ -308,13 +327,69 @@ disk_read_root_dir:
 
     stc
     int 13h              ; bios disk services
-    jnc .done
+    jc .error
 
-    call disk_reset_drive
-    jnc disk_read_root_dir
-
-.done:
     popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
+    ret
+
+; ==========================================================
+; disk_write_root_dir -- Write root directory contents from disk_buffer to disk
+; IN: root dir copy in disk_buffer
+; OUT: carry set if error
+disk_write_root_dir:
+    pusha
+    mov ax, 19      ; root directory
+    call disk_convert_l2hts
+
+    mov bx, ds
+    mov es, bx
+    mov bx, disk_buffer  ; write data from buffer pointed by es:bx
+
+    mov ah, 3            ; write sectors function
+    mov al, 14           ; # of sectors (14 = size of root directory)
+
+    stc
+    int 13h              ; bios disk services
+    jc .error
+
+    popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
+    ret
+
+; ==========================================================
+; disk_read_fat -- Read FAT entry from floppy into disk_buffer
+; IN: Nothing
+; OUT: carry set if failure
+disk_read_fat:
+    pusha
+    mov ax, 1            ; 1st fat entry
+    call disk_convert_l2hts
+
+    mov bx, disk_buffer  ; load data into buffer pointed by es:bx
+    mov ah, 2            ; read sectors function
+    mov al, [SectorsPerFat]
+    stc
+    int 0x13             ; bios disk services
+    jc .error
+
+    popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
     ret
 
 ; ==========================================================
