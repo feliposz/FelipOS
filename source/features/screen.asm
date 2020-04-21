@@ -172,3 +172,57 @@ os_print_space:
     int 10h
     pop ax
     ret
+
+; ==========================================================
+; os_dump_registers -- Displays register contents in hex on the screen
+; IN/OUT: AX/BX/CX/DX = registers to show
+os_dump_registers:
+    pushf   ; sp + 12
+    push es
+    push ds
+    push ss
+    push cs
+    push di
+    push si
+    push bp
+    push dx
+    push cx
+    push bx
+    push ax ; sp + 0
+
+    mov si, register_msg
+    call os_print_string
+
+    ; print the registers pushed on stack in the order given above + return address (IP)
+    mov cx, 13
+    mov si, sp
+.dump_loop:
+    lodsw
+    call os_print_4hex
+    call os_print_space
+    loop .dump_loop
+
+    ; print value of SP register before os_dump_registers call
+    mov ax, sp
+    add ax, 26 ; = 2 * (12 pushes above + return address)
+    call os_print_4hex
+    call os_print_newline
+
+    pop ax
+    pop bx
+    pop cx
+    pop dx
+    pop bp
+    pop si
+    pop di
+
+    popf ; dummy pop to avoid overwriting segments!
+    popf
+    popf 
+    popf
+
+    popf
+
+    ret
+
+register_msg db 'AHAL BHBL CHCL DHDL BP   SI   DI   CS   SS   DS   ES   Flag IP   SP', 13, 10, 0
