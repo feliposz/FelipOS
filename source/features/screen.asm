@@ -99,3 +99,76 @@ os_input_string:
     stosb
     popa
     ret
+
+; ==========================================================
+; os_print_digit -- Displays contents of AX as a single digit. Works up to base 37, ie digits 0-Z.
+; IN: AX = "digit" to format and print
+os_print_digit:
+    push ax
+    mov ah, 0eh
+    cmp al, 9
+    ja .not_digit
+    add al, '0'
+    jmp .done
+.not_digit:
+    add al, 'A' - 10
+.done:
+    int 10h
+    pop ax
+    ret
+
+; ==========================================================
+; os_print_1hex -- Displays low nibble of AL in hex format
+; IN: AL = number to format and print
+os_print_1hex:
+    push ax
+    and ax, 000fh
+    call os_print_digit
+    pop ax
+    ret
+
+; ==========================================================
+; os_print_2hex -- Displays AL in hex format
+; IN: AL = number to format and print
+os_print_2hex:
+    push ax
+    shr ax, 4
+    and ax, 000fh
+    call os_print_digit
+    pop ax
+    push ax
+    and ax, 000fh
+    call os_print_digit
+    pop ax
+    ret
+
+; ==========================================================
+; os_print_4hex -- Displays AX in hex format
+; IN: AX = number to format and print
+os_print_4hex:
+    push ax
+    push bx
+    push cx
+    mov bx, ax
+    mov cx, 4
+.next_nibble:
+    rol bx, 4
+    mov ax, bx
+    and ax, 000fh
+    call os_print_digit
+    loop .next_nibble
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; ==========================================================
+; os_print_space -- Print a space to the screen
+; IN/OUT: Nothing
+os_print_space:
+    push ax
+    mov ah, 0eh
+    mov al, ' '
+    int 10h
+    pop ax
+    ret
