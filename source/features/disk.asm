@@ -204,8 +204,112 @@ os_rename_file:
     ret
 
 ; ==========================================================
+; os_remove_file -- Deletes the specified file from the filesystem
+; IN: AX = location of filename to remove
+os_remove_file:
+    pusha
+    call int_filename_convert
+    call disk_read_root_dir
+    jc .error
+    call disk_get_root_entry
+    jc .error
+
+    mov bx, [di + 1ah]
+    mov [disk_cluster], bx
+
+    mov byte [di], 0e5h ; erased file marker
+    call disk_write_root_dir
+    jc .error
+
+    call disk_read_fat
+    jc .error
+
+    ; mov si, disk_buffer
+    ; mov cx, 64
+    ; call int_hexdump
+
+.next_cluster:
+    mov ax, [disk_cluster]
+    cmp ax, 0x0ff0                  ; last cluster indicator can be 0xff0, 0xff8 or 0xfff
+    jge .last_cluster
+
+    ; clusters are stored as 12-bit in FAT12
+    ; calculate cluster offset in table
+    ; offset = cluster * 3 / 2
+    mov ax, [disk_cluster]
+    shl ax, 1
+    add ax, [disk_cluster]
+    shr ax, 1
+    mov bx, ax
+    mov dx, [disk_buffer+bx]
+
+    ; check alignment
+    mov ax, [disk_cluster]
+    test ax, 1
+    jz .even_cluster
+
+.odd_cluster:
+    shr dx, 4                       ; aligned to left, shift it right 4 bits
+    mov [disk_cluster], dx
+    and word [disk_buffer+bx], 000fh     ; erase 12 bits to left, keep 4 bits on the right
+    jmp .next_cluster
+
+.even_cluster:
+    and dx, 0x0fff                  ; aligned to right, discard 4 high bits
+    mov [disk_cluster], dx
+    and word [disk_buffer+bx], 0f000h    ; erase 12 bits to right, keep 4 bits on the left
+    jmp .next_cluster
+
+.last_cluster:
+    call disk_write_fat
+
+    ;call os_print_newline
+    ;mov si, disk_buffer
+    ;mov cx, 64
+    ;call int_hexdump
+
+    popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
+    ret
+
+; ==========================================================
 ; INTERNAL OS ROUTINES
 ; Not accessible to user programs
+
+; ==========================================================
+; int_hexdump --  Dump memory segment
+; IN: SI = memory address, CX = bytes
+int_hexdump:
+    pusha
+.next_row:
+    or cx, cx
+    jz .done
+    mov ax, si
+    call os_print_4hex
+    mov al, ':'
+    mov ah, 0eh
+    int 10h
+    call os_print_space
+    mov dx, 16
+.next_byte:
+    lodsb
+    call os_print_2hex
+    call os_print_space
+    dec cx
+    jz .done
+    dec dx
+    jnz .next_byte
+    call os_print_newline
+    jmp .next_row
+.done:
+    call os_print_newline
+    popa
+    ret
 
 ; ==========================================================
 ; int_filename_convert --  Change 'TEST.BIN' into 'TEST    BIN' as per FAT12
@@ -378,6 +482,31 @@ disk_read_fat:
 
     mov bx, disk_buffer  ; load data into buffer pointed by es:bx
     mov ah, 2            ; read sectors function
+    mov al, [SectorsPerFat]
+    stc
+    int 0x13             ; bios disk services
+    jc .error
+
+    popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
+    ret
+
+; ==========================================================
+; disk_write_fat -- Save FAT contents from disk_buffer in RAM to disk
+; IN: FAT in disk_buffer
+; OUT: carry set if failure
+disk_write_fat:
+    pusha
+    mov ax, 1            ; 1st fat entry
+    call disk_convert_l2hts
+
+    mov bx, disk_buffer  ; load data into buffer pointed by es:bx
+    mov ah, 3            ; read sectors function
     mov al, [SectorsPerFat]
     stc
     int 0x13             ; bios disk services

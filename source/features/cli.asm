@@ -94,6 +94,11 @@ get_command:
     call os_string_compare
     jc cmd_ren
 
+    mov si, input
+    mov di, del
+    call os_string_compare
+    jc cmd_del
+
     mov si, unknown_msg
     call os_print_string
 
@@ -552,6 +557,22 @@ cmd_ren:
     call os_print_string
     jmp get_command
 
+cmd_del:
+    mov si, [param_list]
+    or si, si
+    jz .error
+    mov ax, si
+    call os_string_uppercase
+    call os_remove_file
+    jc .error
+    jmp get_command
+
+.error:
+    mov si, nofile_msg
+    call os_print_string
+    jmp get_command
+
+
 echo        db 'ECHO', 0
 exit        db 'EXIT', 0
 cls         db 'CLS', 0
@@ -564,7 +585,8 @@ time        db 'TIME', 0
 size        db 'SIZE', 0
 cat         db 'CAT', 0
 ren         db 'REN', 0
-help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, CAT, REN, SIZE, EXIT', 13, 10, 0
+del         db 'DEL', 0
+help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, CAT, REN, DEL, SIZE, EXIT', 13, 10, 0
 unknown_msg db 'Unknown command', 13, 10, 0
 size_msg    db 'File size (bytes): ', 0
 nofile_msg  db 'File not found or invalid filename', 13, 10, 0
