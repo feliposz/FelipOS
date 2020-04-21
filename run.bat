@@ -28,14 +28,14 @@ copy bin\kernel.bin b:\
 echo * Add some test cases for DIR *
 echo hello, world! > b:\hello.txt
 copy bin\kernel.bin b:\delete.me
-copy ..\..\mikeos-4.6.1\programs\*.* b:\
+rem copy ..\..\mikeos-4.6.1\programs\*.* b:\
 dir b:
 
 echo * Dismounting image *
 imdisk -D -m B:
 
 echo * Booting *
-@"C:\Program Files\qemu\qemu-system-i386w.exe" -fda bin\felipos.flp -boot order=a
+@"C:\Program Files\qemu\qemu-system-i386w.exe" -rtc base=localtime -fda bin\felipos.flp -boot order=a
 goto end
 
 :fail

@@ -221,12 +221,11 @@ os_remove_file:
     call disk_write_root_dir
     jc .error
 
+    or bx, bx ; no first cluster (empty file)
+    jz .done
+
     call disk_read_fat
     jc .error
-
-    ; mov si, disk_buffer
-    ; mov cx, 64
-    ; call int_hexdump
 
 .next_cluster:
     mov ax, [disk_cluster]
@@ -263,10 +262,60 @@ os_remove_file:
 .last_cluster:
     call disk_write_fat
 
-    ;call os_print_newline
-    ;mov si, disk_buffer
-    ;mov cx, 64
-    ;call int_hexdump
+.done:
+    popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
+    ret
+
+; ==========================================================
+; os_create_file -- Creates a new 0-byte file on the floppy disk
+; IN: AX = location of filename
+; OUT: Nothing
+os_create_file:
+    pusha
+    call int_filename_convert
+    call disk_read_root_dir
+    jc .error
+    call disk_get_free_entry
+    jc .error
+
+    mov si, ax
+    mov cx, 11
+    rep movsb
+
+    call int_get_timestamp
+
+    mov al, 20h         ; file attribute (20h = Archive)
+    stosb
+    mov al, 18h         ; Windows lowercase name + extension
+    stosb
+    mov al, 0           ; fine resolution creation time (10ms)
+    stosb
+    mov ax, [file_time] ; creation time
+    stosw
+    mov ax, [file_date] ; creation date
+    stosw
+    mov ax, [file_date] ; access date
+    stosw
+    mov ax, 0           ; unused
+    stosw
+    mov ax, [file_time] ; modified time
+    stosw
+    mov ax, [file_date] ; modified date
+    stosw
+    mov ax, 0           ; first cluster
+    stosw
+    mov ax, 0           ; size (4 bytes)
+    stosw
+    stosw
+
+    call disk_write_root_dir
+    jc .error
 
     popa
     clc
@@ -349,6 +398,83 @@ int_filename_convert:
     mov ax, filename_converted
     ret
 
+
+; ==========================================================
+; int_get_timestamp -- Set current timestamp for file operations
+; OUT: Update file_date and file_time
+int_get_timestamp:
+    pusha
+
+.retry_time:
+    mov ah, 2
+    int 1ah
+    jc .retry_time
+
+    ; CH = hours in BCD
+    ; CL = minutes in BCD
+    ; DH = seconds in BCD
+    ; DL = 1 if daylight savings time option
+
+    xor bx, bx
+
+    ; hour - bits 15-11
+    mov al, ch
+    call os_bcd_to_int
+    shl ax, 11
+    or bx, ax
+
+    ; minutes - bits 10-5
+    mov al, cl
+    call os_bcd_to_int
+    shl ax, 5
+    or bx, ax
+
+    ; seconds (2 seconds resolution) - bits 4-0
+    mov al, dh
+    call os_bcd_to_int
+    shr ax, 1
+    or bx, ax
+
+    mov [file_time], bx
+
+.retry_date:
+    mov ah, 4
+    int 1ah
+    jc .retry_date
+
+    ; CH    century, in BCD  (19H ... 20H)
+    ; CL    year, in BCD     (00H ... 99H)
+    ; DH    month, in BCD    (i.e., 01H=Jan ... 12H=Dec)
+    ; DL    day, in BCD      (00H ... 31H)
+
+    ; year - bits 15-9
+    mov al, ch
+    call os_bcd_to_int
+    mov bl, 100
+    mul bl
+    mov bx, ax
+    mov al, cl
+    call os_bcd_to_int
+    add bx, ax
+    sub bx, 1980
+    shl bx, 9
+
+    ; month - bits 8-5
+    mov al, dh
+    call os_bcd_to_int
+    shl ax, 5
+    or bx, ax
+
+    ; day - bits 4-0
+    mov al, dl
+    call os_bcd_to_int
+    or bx, ax
+
+    mov [file_date], bx
+
+    popa
+    ret
+
 ; ==========================================================
 ; disk_get_root_entry --  Search RAM copy of root dir for file entry
 ; IN: AX = filename
@@ -364,14 +490,14 @@ disk_get_root_entry:
     mov cx, [RootDirEntries]
 
 .next_entry:
-    mov al, [si]
+    mov al, [di]
 
     cmp al, 0         ; first empty entry, skip the rest
     je .not_found
     cmp al, 0e5h      ; erased file
     je .skip
 
-    mov al, [si+0bh]
+    mov al, [di+0bh]
 
     test al, 08       ; volume label
     jnz .skip
@@ -386,31 +512,71 @@ disk_get_root_entry:
 
     mov cx, 11
     rep cmpsb
-    je .found
 
     pop cx
     pop di
     pop si
+
+    je .found
 
 .skip:
     add di, 32        ; advance to next entry
     loop .next_entry
-    jmp .not_found
-
-.found:
-    pop cx
-    pop di
-    pop si
-    clc
-    jmp .done
 
 .not_found:
-    stc
-
-.done:
     pop si
     pop cx
     pop ax
+    stc
+    ret
+
+.found:
+    pop si
+    pop cx
+    pop ax
+    clc
+    ret
+
+
+; ==========================================================
+; disk_get_free_entry --  Search RAM copy of root dir for a free file entry
+; OUT: DI = location in disk_buffer of free root dir entry, or carry set if no free entry found
+disk_get_free_entry:
+    push ax
+    push cx
+    push dx
+    cld
+    xor dx, dx
+    mov di, disk_buffer
+    mov cx, [RootDirEntries]
+
+.next_entry:
+    mov al, [di]
+    cmp al, 0         ; first empty entry, skip the rest
+    je .empty_found
+    cmp al, 0e5h
+    jne .advance
+    mov dx, di        ; erased file
+.advance:
+    add di, 32        ; advance to next entry
+    loop .next_entry
+
+    or dx, dx
+    jz .not_found
+    mov di, dx        ; if no empty entry found, use erased entry
+
+.empty_found:
+    pop dx
+    pop cx
+    pop ax
+    clc
+    ret
+
+.not_found:
+    pop dx
+    pop cx
+    pop ax
+    stc
     ret
 
 ; ==========================================================
@@ -565,3 +731,5 @@ filename_converted  times 12 db 0
 disk_cluster        dw 0
 file_size           dw 0
 file_pointer        dw 0
+file_date           dw 0
+file_time           dw 0

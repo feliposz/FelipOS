@@ -1,7 +1,12 @@
 os_command_line:
     call os_clear_screen
 
+    mov ax, create_test
+    call os_create_file
+
     jmp cmd_ver
+
+create_test db 'CREATED.TST'
 
 get_command:
     mov si, prompt
