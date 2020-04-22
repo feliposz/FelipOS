@@ -22,13 +22,13 @@ copy bin\bootload.bin bin\felipos.flp
 echo * Mounting image *
 imdisk -a -f bin\felipos.flp -s 1440K -m B: 
 
-echo * Adding dummy kernel.bin *
+echo * Copying kernel.bin *
 copy bin\kernel.bin b:\
 
-echo * Add some test cases for DIR *
+echo * Add some test files *
 echo hello, world! > b:\hello.txt
 copy bin\kernel.bin b:\delete.me
-rem copy ..\..\mikeos-4.6.1\programs\*.* b:\
+copy ..\..\mikeos-4.6.1\programs\*.* b:\
 dir b:
 
 echo * Dismounting image *

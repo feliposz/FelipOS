@@ -1,12 +1,7 @@
 os_command_line:
     call os_clear_screen
 
-    mov ax, create_test
-    call os_create_file
-
     jmp cmd_ver
-
-create_test db 'CREATED.TST'
 
 get_command:
     mov si, prompt
@@ -103,6 +98,11 @@ get_command:
     mov di, del
     call os_string_compare
     jc cmd_del
+
+    mov si, input
+    mov di, copy
+    call os_string_compare
+    jc cmd_copy
 
     mov si, unknown_msg
     call os_print_string
@@ -578,6 +578,54 @@ cmd_del:
     jmp get_command
 
 
+cmd_copy:
+    mov si, [param_list]
+    or si, si
+    jz .error
+
+    mov ax, [param_list]
+    call os_string_chomp
+    call os_string_uppercase
+
+    mov al, ' '
+    call os_string_tokenize
+    or di, di
+    jz .error_target
+    mov byte [di-1], 0
+    mov [param_other], di
+
+    mov ax, [param_list]    ; check source file
+    call os_file_exists
+    jc .error
+
+    mov ax, [param_other]   ; check target file
+    call os_string_chomp
+    call os_file_exists
+    jnc .error_target
+
+    mov ax, [param_list]
+    mov cx, user_space
+    call os_load_file
+    jc .error
+
+    mov cx, bx
+    mov ax, [param_other]
+    mov bx, user_space
+    call os_write_file
+    jc .error_target
+
+    jmp get_command
+
+.error:
+    mov si, nofile_msg
+    call os_print_string
+    jmp get_command
+
+.error_target:
+    mov si, target_msg
+    call os_print_string
+    jmp get_command
+
 echo        db 'ECHO', 0
 exit        db 'EXIT', 0
 cls         db 'CLS', 0
@@ -591,7 +639,8 @@ size        db 'SIZE', 0
 cat         db 'CAT', 0
 ren         db 'REN', 0
 del         db 'DEL', 0
-help_msg    db 'Commands: HELP, CLS, ECHO, TIME, DATE, VER, DIR, LS, CAT, REN, DEL, SIZE, EXIT', 13, 10, 0
+copy        db 'COPY', 0
+help_msg    db 'Commands: HELP CLS ECHO TIME DATE VER DIR LS SIZE CAT REN DEL COPY EXIT', 13, 10, 0
 unknown_msg db 'Unknown command', 13, 10, 0
 size_msg    db 'File size (bytes): ', 0
 nofile_msg  db 'File not found or invalid filename', 13, 10, 0
