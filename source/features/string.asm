@@ -501,6 +501,7 @@ os_long_int_to_string:
     mov di, long_string
     ret
 
+; ==========================================================
 ; os_string_reverse -- Reverse the characters in a string
 ; IN: SI = string location
 os_string_reverse:
@@ -532,6 +533,256 @@ os_string_reverse:
 .done:
     popa
     ret
+
+; ==========================================================
+; os_string_copy -- Copy one string into another
+; IN/OUT: SI = source, DI = destination (programmer ensure sufficient room)
+os_string_copy:
+    cld
+    push ax
+    push si
+    push di
+
+.loop:
+    mov al, [si]
+    movsb
+    or al, al
+    jnz .loop
+
+    pop di
+    pop si
+    pop ax
+    ret
+
+; os_string_join -- Join two strings into a third string
+; IN/OUT: AX = string one, BX = string two, CX = destination string
+os_string_join:
+    cld
+    push ax
+    push si
+    push di
+
+    mov si, ax
+    mov di, cx
+.loop_a:
+    mov al, [si]
+    movsb
+    or al, al
+    jnz .loop_a
+
+    dec di
+    mov si, bx
+.loop_b:
+    mov al, [si]
+    movsb
+    or al, al
+    jnz .loop_b
+
+    pop di
+    pop si
+    pop ax
+    ret
+
+; ==========================================================
+; os_string_length -- Return length of a string
+; IN: AX = string location
+; OUT AX = length (other regs preserved)
+os_string_length:
+    cld
+    push cx
+    push si
+    mov si, ax
+    xor cx, cx
+.loop:
+    lodsb
+    or al, al
+    jz .end
+    inc cx
+    jmp .loop
+.end:
+    mov ax, cx
+    pop si
+    pop cx
+    ret
+
+; ==========================================================
+; os_find_char_in_string -- Find location of character in a string
+; IN: SI = string location, AL = character to find
+; OUT: AX = location in string, or 0 if char not present
+os_find_char_in_string:
+    push cx
+    push dx
+    push si
+    mov dl, al
+    xor cx, cx
+.loop:
+    lodsb
+    or al, al
+    jz .not_found
+    inc cx
+    cmp al, dl
+    je .found
+    jmp .loop
+.not_found:
+    xor cx, cx
+.found:
+    mov ax, cx
+    pop si
+    pop dx
+    pop cx
+    ret
+
+; ==========================================================
+; os_string_charchange -- Change instances of character in a string
+; IN: SI = string, AL = char to find, BL = char to replace with
+os_string_charchange:
+    push dx
+    push si
+.loop:
+    mov dl, [si]
+    or dl, dl
+    jz .done
+    cmp dl, al
+    jne .next
+    mov [si], bl
+.next:
+    inc si
+    jmp .loop
+.done:
+    pop si
+    pop dx
+    ret
+
+; ==========================================================
+; os_string_truncate -- Chop string down to specified number of characters
+; IN: SI = string location, AX = number of characters
+; OUT: String modified, registers preserved
+os_string_truncate:
+    push ax
+    push bx
+    push si
+    mov bx, ax
+    mov ax, si
+    call os_string_length
+    cmp bx, ax
+    jge .done
+    mov byte [si+bx], 0
+.done:
+    pop si
+    pop bx
+    pop ax
+    ret
+
+; ==========================================================
+; os_string_strip -- Removes specified character from a string (max 255 chars)
+; IN: SI = string location, AL = character to remove
+os_string_strip:
+    push si
+    push di
+    push bx
+    mov di, si
+.loop:
+    mov bl, [si]
+    mov [di], bl
+    cmp bl, al
+    je .skip
+    inc di
+.skip:
+    inc si
+    cmp bl, 0
+    jne .loop
+.done:
+    pop bx
+    pop di
+    pop si
+    ret
+
+; ==========================================================
+; os_string_parse -- Take string (eg "run foo bar baz") and return pointers to zero-terminated strings (eg AX = "run", BX = "foo" etc.)
+; IN: SI = string
+; OUT: AX, BX, CX, DX = individual strings
+os_string_parse:
+    push si
+    mov ax, si
+    mov bx, 0
+    mov cx, 0
+    mov dx, 0
+
+.loop_bx:
+    cmp byte [si], 0
+    jz .done
+    cmp byte [si], ' '
+    je .end_bx
+    inc si
+    jmp .loop_bx
+.end_bx:
+    mov byte [si], 0
+    inc si
+    mov bx, si
+
+.loop_cx:
+    cmp byte [si], 0
+    jz .done
+    cmp byte [si], ' '
+    je .end_cx
+    inc si
+    jmp .loop_cx
+.end_cx:
+    mov byte [si], 0
+    inc si
+    mov cx, si
+
+.loop_dx:
+    cmp byte [si], 0
+    jz .done
+    cmp byte [si], ' '
+    je .end_dx
+    inc si
+    jmp .loop_dx
+.end_dx:
+    mov byte [si], 0
+    inc si
+    mov dx, si
+
+.done:
+    pop si
+    ret
+
+; ==========================================================
+; os_string_to_int -- Convert decimal string to integer value
+; IN: SI = string location (max 5 chars, up to '65536')
+; OUT: AX = number
+os_string_to_int:
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    mov cx, 5
+    mov bx, 10
+    xor di, di
+.next_digit:
+    xor ax, ax
+    lodsb
+    cmp al, '0'
+    jb .done
+    cmp al, '9'
+    ja .done
+    sub al, '0'
+    xchg ax, di
+    mul bx
+    add ax, di
+    xchg ax, di
+    loop .next_digit
+.done:
+    xchg ax, di
+    push di
+    push si
+    push dx
+    push cx
+    push bx
+    ret
+
 
 time_fmt     db 0
 date_fmt     db 0
