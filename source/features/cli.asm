@@ -104,6 +104,50 @@ get_command:
     call os_string_compare
     jc cmd_copy
 
+    ; external
+
+    ; has extension?
+    mov si, input
+    mov al, '.'
+    call os_find_char_in_string
+    or ax, ax
+    jnz .check_bin
+
+    ; add .bin extension
+    mov ax, input
+    mov bx, bin_ext
+    mov cx, temp
+    call os_string_join
+    mov si, temp
+    jmp .check_kernel
+
+.check_bin:
+    mov si, input - 1
+    add si, ax
+    mov di, bin_ext
+    call os_string_compare
+    jnc .not_bin
+    mov si, input
+
+.check_kernel:
+    mov di, kernel_name
+    call os_string_compare
+    jnc .load_bin
+
+    mov si, kernel_msg
+    call os_print_string
+    jmp get_command
+
+.load_bin:
+    mov ax, si
+    mov si, param_list
+    mov cx, user_space
+    call os_load_file
+    jc .not_bin
+    call user_space
+    jmp get_command
+
+.not_bin:
     mov si, unknown_msg
     call os_print_string
 
@@ -640,7 +684,10 @@ unknown_msg db 'Invalid command or program not found', 13, 10, 0
 size_msg    db 'File size (bytes): ', 0
 nofile_msg  db 'File not found or invalid filename', 13, 10, 0
 target_msg  db 'Invalid target filename', 13, 10, 0
+kernel_msg  db 'Cannot run KERNEL.BIN', 13, 10, 0
 version_msg db 'FelipOS ', OS_VERSION, 13, 10, 0
+bin_ext     db '.BIN', 0
+kernel_name db 'KERNEL.BIN', 0
 ls_header   db '    Name         attr         created          last write      first  bytes     ', 0
 ls_nextpage db 'Press key for next page', 0
 prompt      db '>', 0
@@ -648,3 +695,4 @@ param_list  dw 0
 param_other dw 0
 input       times 80 db 0
 output      times 81 db 0 ; 1 extra for nul terminator
+temp        times 80 db 0
