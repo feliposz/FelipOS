@@ -140,7 +140,7 @@ get_command:
 
 .load_bin:
     mov ax, si
-    mov si, param_list
+    mov si, [param_list]
     mov cx, user_space
     call os_load_file
     jc .not_bin

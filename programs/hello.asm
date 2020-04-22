@@ -1,16 +1,22 @@
-bits 16
-org 32768
+%include 'felipos.inc'
 
-start:
+main:
+    or si, si
+    jz .no_name
+    mov ax, si
+    jmp .message
+.no_name:
+    mov ax, name
+
+.message:
     mov si, hello
-    mov ah, 0eh
-.loop
-    lodsb
-    or al, al
-    jz .end
-    int 10h
-    jmp .loop
-.end:
+    call os_print_string
+    mov si, ax
+    call os_print_string
+    mov si, end
+    call os_print_string
     ret
 
-hello db 'Hello FelipOS!', 13, 10, 0
+hello db 'Hello ', 0
+name  db 'FelipOS', 0 
+end   db '!!!', 13, 10, 0
