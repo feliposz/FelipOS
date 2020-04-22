@@ -209,11 +209,11 @@ os_get_time_string:
     mov ah, 0
     cmp ch, 0
     je .midnight
-    cmp ch, 24
+    cmp ch, 24h
     je .midnight
     cmp ch, 12h
     je .noon
-    jg .pm
+    ja .pm
     jmp .12hour_out
 .noon:
     mov ah, 1
@@ -222,8 +222,10 @@ os_get_time_string:
     jmp .12hour_out
 .pm:
     mov ah, 1
-    sub ch, 12h
+    mov al, ch
+    sub al, 12h
     das
+    mov ch, al
 .12hour_out:
     mov al, ch
     shr al, 4
