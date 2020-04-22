@@ -152,10 +152,10 @@ cmd_time:
     jmp get_command
 
 cmd_dir:
-    mov ax, temp
+    mov ax, user_space
     call os_get_file_list
 
-    mov si, temp
+    mov si, user_space
 .next_file:
     mov al, ','
     call os_string_tokenize
@@ -470,7 +470,6 @@ cmd_size:
     or si, si
     jz .error
     mov ax, si
-    call os_string_uppercase
     call os_get_file_size
     jc .error
     push bx
@@ -494,7 +493,6 @@ cmd_cat:
     jz .error
 
     mov ax, si
-    call os_string_uppercase
     mov cx, user_space
     call os_load_file
     jc .error
@@ -528,7 +526,6 @@ cmd_ren:
 
     mov ax, [param_list]
     call os_string_chomp
-    call os_string_uppercase
 
     mov al, ' '
     call os_string_tokenize
@@ -567,7 +564,6 @@ cmd_del:
     or si, si
     jz .error
     mov ax, si
-    call os_string_uppercase
     call os_remove_file
     jc .error
     jmp get_command
@@ -585,7 +581,6 @@ cmd_copy:
 
     mov ax, [param_list]
     call os_string_chomp
-    call os_string_uppercase
 
     mov al, ' '
     call os_string_tokenize
@@ -641,7 +636,7 @@ ren         db 'REN', 0
 del         db 'DEL', 0
 copy        db 'COPY', 0
 help_msg    db 'Commands: HELP CLS ECHO TIME DATE VER DIR LS SIZE CAT REN DEL COPY EXIT', 13, 10, 0
-unknown_msg db 'Unknown command', 13, 10, 0
+unknown_msg db 'Invalid command or program not found', 13, 10, 0
 size_msg    db 'File size (bytes): ', 0
 nofile_msg  db 'File not found or invalid filename', 13, 10, 0
 target_msg  db 'Invalid target filename', 13, 10, 0
@@ -651,6 +646,5 @@ ls_nextpage db 'Press key for next page', 0
 prompt      db '>', 0
 param_list  dw 0
 param_other dw 0
-input       times 79 db 0
+input       times 80 db 0
 output      times 81 db 0 ; 1 extra for nul terminator
-temp        times 2000 db 0

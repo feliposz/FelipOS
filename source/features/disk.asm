@@ -81,6 +81,7 @@ os_get_file_list:
 ; IN: AX = filename
 ; OUT: BX = file size in bytes (up to 64K) or carry set if file not found
 os_get_file_size:
+    call os_string_uppercase
     call int_filename_convert
     call disk_read_root_dir
     call disk_get_root_entry
@@ -97,8 +98,10 @@ os_load_file:
     push dx
     push di
     mov [file_pointer], cx
+    call os_string_uppercase
     call int_filename_convert
     call disk_read_root_dir
+    jc .done
     call disk_get_root_entry
     jc .done
 
@@ -176,6 +179,7 @@ os_load_file:
 ; IN: AX = filename location
 ; OUT: carry clear if found, set if not
 os_file_exists:
+    call os_string_uppercase
     call int_filename_convert
     call disk_read_root_dir
     call disk_get_root_entry
@@ -188,12 +192,14 @@ os_file_exists:
 os_rename_file:
     call disk_read_root_dir
     jc .done
+    call os_string_uppercase
     call int_filename_convert
     jc .done
     call disk_get_root_entry ; DI = file entry
     jc .done
 
     mov ax, bx
+    call os_string_uppercase
     call int_filename_convert
     mov si, ax
     mov cx, 11
@@ -208,6 +214,7 @@ os_rename_file:
 ; IN: AX = location of filename to remove
 os_remove_file:
     pusha
+    call os_string_uppercase
     call int_filename_convert
     call disk_read_root_dir
     jc .error
@@ -332,6 +339,7 @@ os_create_file:
 ; OUT: Carry clear if OK, set if failure
 os_write_file:
     pusha
+    call os_string_uppercase
     mov [file_name], ax
     mov [file_pointer], bx
     mov [file_size], cx
@@ -579,6 +587,8 @@ int_filename_convert:
     pusha
     mov si, ax
 
+    ; TODO: Check for invalid characters
+
     mov cx, 11
     mov di, filename_converted
     mov al, ' '
@@ -606,6 +616,7 @@ int_filename_convert:
 
 .done:
     popa
+    clc
     mov ax, filename_converted
     ret
 
