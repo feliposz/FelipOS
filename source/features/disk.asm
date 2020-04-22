@@ -327,6 +327,217 @@ os_create_file:
     ret
 
 ; ==========================================================
+; os_write_file -- Save (max 64K) file to disk
+; IN: AX = filename, BX = data location, CX = bytes to write
+; OUT: Carry clear if OK, set if failure
+os_write_file:
+    pusha
+    mov [file_name], ax
+    mov [file_pointer], bx
+    mov [file_size], cx
+
+    ; if file exists, return failure
+    call os_file_exists
+    jnc .error
+
+    call disk_read_fat
+
+    ; build a free cluster list (128 clusters since max size is 64k)
+
+    mov cx, 128             ; max filesize = 64k = 512 bytes * 128 clusters
+    xor ax, ax
+    rep stosw               ; clear free list
+
+    mov cx, 0
+    mov dx, 1536            ; 9 sectors * 512 bytes / 3 bytes for every pair
+
+    mov word [disk_cluster], 2  ; first 2 pairs are reserved
+    mov si, disk_buffer + 3     ; 2 * 12-bits entry = 3 bytes (24-bits)
+    mov di, free_list
+
+.next_pair:
+
+    ; even cluster
+    mov ax, [si]
+    and ax, 0fffh
+    or ax, ax
+    jnz .even_skip
+    mov ax, [disk_cluster] ; add even cluster to free list
+    stosw
+    inc cx
+.even_skip:
+
+    cmp cx, 128
+    jge .end_free
+
+    ; odd cluster
+    mov ax, [si+1]
+    shr ax, 4
+    or ax, ax
+    jnz .odd_skip
+    mov ax, [disk_cluster] ; add odd cluster to free list
+    inc ax
+    stosw
+    inc cx
+.odd_skip:
+
+    cmp cx, 128
+    jge .end_free
+
+    dec dx
+    or dx, dx
+    jz .end_free
+
+    add word [disk_cluster], 2
+    add si, 3
+    jmp .next_pair
+.end_free:
+
+    mov [free_clusters], cx
+
+    ; check how many clusters needed for file (file_size / 512)
+
+    xor dx, dx
+    mov ax, [file_size]
+    mov bx, 512
+    div bx
+    or dx, dx
+    jz .exact
+    inc ax      ; + 1 if remainder is not zero
+.exact:
+    cmp ax, cx
+    jg .error        ; if not enough free clusters, return failure
+
+    mov [file_clusters], ax
+
+    ; write blocks using free cluster list
+
+    mov si, free_list
+    mov cx, [file_clusters]
+
+.write_file:
+    or cx, cx ; is last cluster?
+    jz .write_complete
+
+    push cx
+
+    ; User Data Offset = ReservedForBoot + SectorsPerFat*NumberOfFats + RootDirEntries*32/BytesPerSector - 2 <= reserved clusters on FAT
+    mov ax, [si]   ; AX = current cluster
+    add ax, 31
+    call disk_convert_l2hts
+
+    mov bx, [file_pointer]
+    mov ah, 3         ; write sectors function
+    mov al, 1         ; write 1 sector
+    stc
+    int 0x13          ; bios disk services
+    jc .write_error
+
+    pop cx
+
+    add word [file_pointer], 512
+    add si, 2
+    dec cx
+    jmp .write_file
+
+.write_error:
+    pop cx
+    jmp .error
+
+.write_complete:
+
+    ; update fat with used clusters
+    mov si, free_list
+    mov cx, [file_clusters]
+
+.update_fat:
+    or cx, cx
+    jz .done_fat
+
+    ; offset = cluster * 3 / 2
+    mov ax, [si]
+    shl ax, 1
+    add ax, [si]
+    shr ax, 1
+    mov di, disk_buffer
+    add di, ax
+
+    ; BX = next cluster in linked list
+    mov bx, [si+2]
+    cmp cx, 1
+    jnz .not_last
+    mov bx, 0xfff   ; EOF marker
+.not_last:
+
+    ; check alignment
+    mov ax, [si]
+    test ax, 1
+    jz .even_cluster
+    shl bx, 4           ; if odd, align 12 bits before writing
+.even_cluster:
+    or [di], bx
+
+    add si, 2
+    dec cx
+    jmp .update_fat
+
+.done_fat:
+    call disk_write_fat
+    jc .error
+
+    ; create new file entry with size and pointing to first cluster
+
+    call disk_read_root_dir
+    jc .error
+    call disk_get_free_entry
+    jc .error
+
+    mov ax, [file_name]
+    call int_filename_convert
+    mov si, ax
+    mov cx, 11
+    rep movsb
+
+    call int_get_timestamp
+
+    mov al, 20h         ; file attribute (20h = Archive)
+    stosb
+    mov al, 18h         ; Windows lowercase name + extension
+    stosb
+    mov al, 0           ; fine resolution creation time (10ms)
+    stosb
+    mov ax, [file_time] ; creation time
+    stosw
+    mov ax, [file_date] ; creation date
+    stosw
+    mov ax, [file_date] ; access date
+    stosw
+    mov ax, 0           ; unused
+    stosw
+    mov ax, [file_time] ; modified time
+    stosw
+    mov ax, [file_date] ; modified date
+    stosw
+    mov ax, [free_list] ; first cluster
+    stosw
+    mov ax, [file_size] ; size low word
+    stosw
+    xor ax, ax          ; size high word
+    stosw
+
+    call disk_write_root_dir
+    jc .error
+
+    popa
+    clc
+    ret
+
+.error:
+    popa
+    stc
+    ret
+
+; ==========================================================
 ; INTERNAL OS ROUTINES
 ; Not accessible to user programs
 
@@ -733,3 +944,7 @@ file_size           dw 0
 file_pointer        dw 0
 file_date           dw 0
 file_time           dw 0
+file_clusters       dw 0
+file_name           dw 0
+free_list           times 128 dw 0
+free_clusters       dw 0
