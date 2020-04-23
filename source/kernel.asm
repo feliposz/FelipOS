@@ -67,7 +67,7 @@ bits 16
     jmp os_string_reverse         ; 00AEh
     jmp os_string_to_int          ; 00B1h
     jmp near __NOT_IMPLEMENTED__  ; os_draw_block             ; 00B4h
-    jmp near __NOT_IMPLEMENTED__  ; os_get_random             ; 00B7h
+    jmp os_get_random             ; 00B7h
     jmp os_string_charchange      ; 00BAh
     jmp os_serial_port_enable     ; 00BDh
     jmp os_sint_to_string         ; 00C0h
@@ -93,6 +93,7 @@ kernel_start:
     sti
 
     call disk_init
+    call os_seed_random
 
 kernel_main:
 
