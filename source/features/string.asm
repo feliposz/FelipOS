@@ -459,8 +459,7 @@ os_sint_to_string:
 ; OUT: DI = location of converted string
 os_long_int_to_string:
     pusha
-
-    mov di, long_string
+    mov bp, di
     mov byte [di], 0
 
     cmp bx, 37
@@ -495,12 +494,11 @@ os_long_int_to_string:
     mov al, 0 ; add nul terminator
     stosb
 
-    mov si, long_string
+    mov si, bp
     call os_string_reverse
 
 .done:
     popa
-    mov di, long_string
     ret
 
 ; ==========================================================
