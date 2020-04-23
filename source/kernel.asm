@@ -15,10 +15,10 @@ bits 16
     jmp os_wait_for_key           ; 0012h
     jmp os_check_for_key          ; 0015h
     jmp os_int_to_string          ; 0018h
-    jmp near __NOT_IMPLEMENTED__  ; os_speaker_tone           ; 001Bh
-    jmp near __NOT_IMPLEMENTED__  ; os_speaker_off            ; 001Eh
+    jmp os_speaker_tone           ; 001Bh
+    jmp os_speaker_off            ; 001Eh
     jmp os_load_file              ; 0021h
-    jmp __NOT_IMPLEMENTED__       ; os_pause                  ; 0024h
+    jmp os_pause                  ; 0024h
     jmp os_fatal_error            ; 0027h
     jmp near __NOT_IMPLEMENTED__  ; os_draw_background        ; 002Ah
     jmp os_string_length          ; 002Dh
@@ -112,6 +112,7 @@ kernel_main:
     %include 'features/disk.asm'
     %include 'features/keyboard.asm'
     %include 'features/misc.asm'
+    %include 'features/sound.asm'
 
 end_msg db 'Exited', 13, 10, 0
 not_implemented_msg db 'SYSTEM CALL NOT IMPLEMENTED', 13, 10, 0

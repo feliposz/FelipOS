@@ -14,7 +14,11 @@ if %errorlevel% neq 0 goto fail
 
 cd ..\programs
 
-nasm hello.asm -f bin -o hello.bin
+echo * Building programs *
+
+for %%i in (*.asm) do nasm -O0 -f bin %%i
+for %%i in (*.bin) do del %%i
+for %%i in (*.) do ren %%i %%i.bin
 
 cd ..
 
@@ -29,10 +33,8 @@ imdisk -a -f bin\felipos.flp -s 1440K -m B:
 echo * Copying kernel.bin *
 copy bin\kernel.bin b:\
 
-echo * Add some test files *
-echo hello, world! > b:\hello.txt
-copy programs\hello.bin b:\
-rem copy ..\..\mikeos-4.6.1\programs\*.* b:\
+echo * Copying programs *
+copy programs\*.bin b:\
 dir b:
 
 echo * Dismounting image *
