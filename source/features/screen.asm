@@ -190,7 +190,7 @@ os_dump_registers:
     push bx
     push ax ; sp + 0
 
-    mov si, register_msg
+    mov si, .register_msg
     call os_print_string
 
     ; print the registers pushed on stack in the order given above + return address (IP)
@@ -225,4 +225,61 @@ os_dump_registers:
 
     ret
 
-register_msg db 'AHAL BHBL CHCL DHDL BP   SI   DI   CS   SS   DS   ES   Flag IP   SP', 13, 10, 0
+.register_msg db 'AHAL BHBL CHCL DHDL BP   SI   DI   CS   SS   DS   ES   Flag IP   SP', 13, 10, 0
+
+; ==========================================================
+; os_move_cursor -- Moves cursor in text mode
+; IN: DH, DL = row, column
+; OUT: Nothing (registers preserved)
+os_move_cursor:
+    push ax
+    push bx
+    mov ah, 2
+    mov bh, 0
+    int 10h
+    pop bx
+    pop ax
+    ret
+
+; ==========================================================
+; os_get_cursor_pos -- Return position of text cursor
+; OUT: DH, DL = row, column
+os_get_cursor_pos:
+    push ax
+    push bx
+    push cx
+    mov ah, 3
+    mov bh, 0
+    int 10h
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; ==========================================================
+; os_show_cursor -- Turns on cursor in text mode
+; IN/OUT: Nothing
+os_show_cursor:
+    push ax
+    push cx
+    mov ah, 1     ; set cursor shape
+    mov cx, 0607h ; lines 6-7 in "emulated" 8x8 mode
+    int 10h
+    pop cx
+    pop ax
+    ret
+
+; ==========================================================
+; os_hide_cursor -- Turns off cursor in text mode
+; IN/OUT: Nothing
+os_hide_cursor:
+    push ax
+    push cx
+    mov ah, 1     ; set cursor shape
+    mov cx, 2000h ; no cursor
+    int 10h
+    pop cx
+    pop ax
+    ret
+
+

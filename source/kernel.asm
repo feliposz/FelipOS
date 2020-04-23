@@ -8,7 +8,7 @@ bits 16
 
     jmp kernel_start              ; 0000h
     jmp os_print_string           ; 0003h
-    jmp near __NOT_IMPLEMENTED__  ; os_move_cursor            ; 0006h
+    jmp os_move_cursor            ; 0006h
     jmp os_clear_screen           ; 0009h
     jmp near __NOT_IMPLEMENTED__  ; os_print_horiz_line       ; 000Ch
     jmp os_print_newline          ; 000Fh
@@ -41,7 +41,7 @@ bits 16
     jmp os_send_via_serial        ; 0060h
     jmp os_get_via_serial         ; 0063h
     jmp os_find_char_in_string    ; 0066h
-    jmp near __NOT_IMPLEMENTED__  ; os_get_cursor_pos         ; 0069h
+    jmp os_get_cursor_pos         ; 0069h
     jmp os_print_space            ; 006Ch
     jmp near __NOT_IMPLEMENTED__  ; os_dump_string            ; 006Fh
     jmp os_print_digit            ; 0072h
@@ -52,8 +52,8 @@ bits 16
     jmp near __NOT_IMPLEMENTED__  ; os_long_int_negate        ; 0081h
     jmp os_set_time_fmt           ; 0084h
     jmp os_set_date_fmt           ; 0087h
-    jmp near __NOT_IMPLEMENTED__  ; os_show_cursor            ; 008Ah
-    jmp near __NOT_IMPLEMENTED__  ; os_hide_cursor            ; 008Dh
+    jmp os_show_cursor            ; 008Ah
+    jmp os_hide_cursor            ; 008Dh
     jmp os_dump_registers         ; 0090h
     jmp os_string_strincmp        ; 0093h
     jmp os_write_file             ; 0096h
