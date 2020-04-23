@@ -428,6 +428,7 @@ display_dir_entry:
     mov ax, [si + 1ch]
     mov dx, [si + 1eh]
     mov bx, 10
+    mov di, temp
     call os_long_int_to_string
     mov si, di
 
