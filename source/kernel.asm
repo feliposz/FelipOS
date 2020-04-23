@@ -38,8 +38,8 @@ bits 16
     jmp os_get_api_version        ; 0057h
     jmp near __NOT_IMPLEMENTED__  ; os_file_selector          ; 005Ah
     jmp os_get_date_string        ; 005Dh
-    jmp near __NOT_IMPLEMENTED__  ; os_send_via_serial        ; 0060h
-    jmp near __NOT_IMPLEMENTED__  ; os_get_via_serial         ; 0063h
+    jmp os_send_via_serial        ; 0060h
+    jmp os_get_via_serial         ; 0063h
     jmp os_find_char_in_string    ; 0066h
     jmp near __NOT_IMPLEMENTED__  ; os_get_cursor_pos         ; 0069h
     jmp os_print_space            ; 006Ch
@@ -69,12 +69,12 @@ bits 16
     jmp near __NOT_IMPLEMENTED__  ; os_draw_block             ; 00B4h
     jmp near __NOT_IMPLEMENTED__  ; os_get_random             ; 00B7h
     jmp os_string_charchange      ; 00BAh
-    jmp near __NOT_IMPLEMENTED__  ; os_serial_port_enable     ; 00BDh
+    jmp os_serial_port_enable     ; 00BDh
     jmp os_sint_to_string         ; 00C0h
     jmp os_string_parse           ; 00C3h
     jmp near __NOT_IMPLEMENTED__  ; os_run_basic              ; 00C6h
-    jmp near __NOT_IMPLEMENTED__  ; os_port_byte_out          ; 00C9h
-    jmp near __NOT_IMPLEMENTED__  ; os_port_byte_in           ; 00CCh
+    jmp os_port_byte_out          ; 00C9h
+    jmp os_port_byte_in           ; 00CCh
     jmp os_string_tokenize        ; 00CFh
 
 __NOT_IMPLEMENTED__:
@@ -113,6 +113,7 @@ kernel_main:
     %include 'features/keyboard.asm'
     %include 'features/misc.asm'
     %include 'features/sound.asm'
+    %include 'features/ports.asm'
 
 end_msg db 'Exited', 13, 10, 0
 not_implemented_msg db 'SYSTEM CALL NOT IMPLEMENTED', 13, 10, 0

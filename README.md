@@ -28,3 +28,6 @@ run.bat
 ```
 
 > *Note:* Edit executable paths if needed.
+
+For use on real PC hardware, a floppy image can be written to a physical 1.44 MB floppy disk or directly to an USB drive (some BIOSes can emulate a floppy disk on boot).
+
