@@ -778,11 +778,11 @@ os_string_to_int:
     loop .next_digit
 .done:
     xchg ax, di
-    push di
-    push si
-    push dx
-    push cx
-    push bx
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
     ret
 
 
