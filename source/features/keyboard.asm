@@ -4,7 +4,7 @@
 os_wait_for_key:
     mov ah, 11h     ; check key buffer
     int 16h
-    jz .keypress
+    jnz .keypress
     hlt             ; no key press, wait for interrupt and loop
     jmp os_wait_for_key
 
@@ -19,7 +19,7 @@ os_wait_for_key:
 os_check_for_key:
     mov ah, 11h     ; check key buffer
     int 16h
-    jz .keypress
+    jnz .keypress
     xor ax, ax      ; no keypress, return zero
     ret
 
