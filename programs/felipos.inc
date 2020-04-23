@@ -1,6 +1,8 @@
 bits 16
 org 32768
 
+    %define API_VERSION 17
+
     kernel_start              equ 0000h
     os_print_string           equ 0003h
     os_move_cursor            equ 0006h
@@ -71,3 +73,13 @@ org 32768
     os_port_byte_out          equ 00C9h
     os_port_byte_in           equ 00CCh
     os_string_tokenize        equ 00CFh
+
+    call os_get_api_version
+    cmp al, API_VERSION
+    je __api_version_ok
+    mov ax, __api_version_error
+    call os_fatal_error
+
+__api_version_error db 'Invalid API Version!', 0
+
+__api_version_ok:
