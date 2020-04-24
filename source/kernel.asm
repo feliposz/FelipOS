@@ -20,13 +20,13 @@ bits 16
     jmp os_load_file              ; 0021h
     jmp os_pause                  ; 0024h
     jmp os_fatal_error            ; 0027h
-    jmp near __NOT_IMPLEMENTED__  ; os_draw_background        ; 002Ah
+    jmp os_draw_background        ; 002Ah
     jmp os_string_length          ; 002Dh
     jmp os_string_uppercase       ; 0030h
     jmp os_string_lowercase       ; 0033h
     jmp os_input_string           ; 0036h
     jmp os_string_copy            ; 0039h
-    jmp near __NOT_IMPLEMENTED__  ; os_dialog_box             ; 003Ch
+    jmp os_dialog_box             ; 003Ch
     jmp os_string_join            ; 003Fh
     jmp os_get_file_list          ; 0042h
     jmp os_string_compare         ; 0045h
@@ -49,7 +49,7 @@ bits 16
     jmp os_print_2hex             ; 0078h
     jmp os_print_4hex             ; 007Bh
     jmp os_long_int_to_string     ; 007Eh
-    jmp near __NOT_IMPLEMENTED__  ; os_long_int_negate        ; 0081h
+    jmp os_long_int_negate        ; 0081h
     jmp os_set_time_fmt           ; 0084h
     jmp os_set_date_fmt           ; 0087h
     jmp os_show_cursor            ; 008Ah
@@ -66,7 +66,7 @@ bits 16
     jmp near __NOT_IMPLEMENTED__  ; os_list_dialog            ; 00ABh
     jmp os_string_reverse         ; 00AEh
     jmp os_string_to_int          ; 00B1h
-    jmp near __NOT_IMPLEMENTED__  ; os_draw_block             ; 00B4h
+    jmp os_draw_block             ; 00B4h
     jmp os_get_random             ; 00B7h
     jmp os_string_charchange      ; 00BAh
     jmp os_serial_port_enable     ; 00BDh
@@ -76,10 +76,6 @@ bits 16
     jmp os_port_byte_out          ; 00C9h
     jmp os_port_byte_in           ; 00CCh
     jmp os_string_tokenize        ; 00CFh
-
-__NOT_IMPLEMENTED__:
-    mov ax, not_implemented_msg
-    call os_fatal_error
 
 kernel_start:
 
@@ -97,14 +93,34 @@ kernel_start:
 
 kernel_main:
 
+    call os_hide_cursor
+
+    mov ax, header_msg
+    mov bx, footer_msg
+    mov cx, 1Fh
+    call os_draw_background
+
+    mov ax, welcome1_msg
+    mov bx, welcome2_msg
+    mov cx, welcome3_msg
+    mov dx, 1
+    call os_dialog_box
+
+    or ax, ax
+    jz kernel_main
+
     ; start CLI
+    call os_show_cursor
     call os_command_line
 
-    mov si, end_msg
-    call os_print_string
+    jmp kernel_main
 
-    ; halt
-    jmp $
+__NOT_IMPLEMENTED__:
+    mov ax, not_imp_msg
+    call os_fatal_error
+.halt:
+    hlt
+    jmp .halt
 
     %include 'features/cli.asm'
     %include 'features/screen.asm'
@@ -116,5 +132,9 @@ kernel_main:
     %include 'features/sound.asm'
     %include 'features/ports.asm'
 
-end_msg db 'Exited', 13, 10, 0
-not_implemented_msg db 'SYSTEM CALL NOT IMPLEMENTED', 13, 10, 0
+header_msg      db 'Welcome to FelipOS', 0
+footer_msg      db 'Version ', OS_VERSION, 0
+welcome1_msg    db 'Welcome! Thanks for using FelipOS!', 0
+welcome2_msg    db 'Please, select OK for program menu or', 0
+welcome3_msg    db 'Cancel for command line.', 0
+not_imp_msg     db 'SYSTEM CALL NOT IMPLEMENTED', 13, 10, 0

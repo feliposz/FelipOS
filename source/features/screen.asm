@@ -282,4 +282,227 @@ os_hide_cursor:
     pop ax
     ret
 
+; ==========================================================
+; os_draw_block -- Render block of specified colour
+; IN: BL/DL/DH/SI/DI = colour/start X pos/start Y pos/width/finish Y pos
+os_draw_block:
+    push ax
+    push bx
+    push cx
+    push dx
+    mov bh, 0               ; page 0
+    mov ah, 9h              ; write character and attribute
+    mov al, ' '             ; fil character
+.loop:
+    mov cx, di
+    cmp dh, cl              ; current Y > finisih Y?
+    jg .end
+    call os_move_cursor
+    mov cx, si              ; repeat character
+    int 10h
+    inc dh                  ; next line
+    jmp .loop
+.end:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
 
+; ==========================================================
+; os_draw_background -- Clear screen with white top and bottom bars containing text, and a coloured middle section.
+; IN: AX/BX = top/bottom string locations, CX = colour
+os_draw_background:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+
+    mov bp, bx  ; save bottom string
+
+    ; top row
+    mov bl, 070h
+    mov dl, 0
+    mov dh, 0
+    mov si, 80
+    mov di, 0
+    call os_draw_block
+    mov dl, 1
+    mov dh, 0
+    call os_move_cursor
+    mov si, ax
+    call os_print_string
+
+    ; bottom row
+    mov dl, 0
+    mov dh, 24
+    mov di, 24
+    mov si, 80
+    call os_draw_block
+    mov dl, 1
+    mov dh, 24
+    call os_move_cursor
+    mov si, bp
+    call os_print_string
+
+    ; background
+    mov bl, cl
+    mov dl, 0
+    mov dh, 1
+    mov di, 23
+    mov si, 80
+    call os_draw_block
+
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; ==========================================================
+; os_dialog_box --  Print dialog box in middle of screen, with button(s)
+; IN: AX, BX, CX = string locations (set registers to 0 for no display)
+; IN: DX = 0 for single 'OK' dialog, 1 for two-button 'OK' and 'Cancel'
+; OUT: If two-button mode, AX = 0 for OK and 1 for cancel
+; NOTE: Each string is limited to 40 characters
+os_dialog_box:
+    pusha
+    push dx
+    push cx
+    push bx
+    push ax
+
+    ; background
+    mov bl, 4fh
+    mov dl, 19
+    mov dh, 9
+    mov si, 42
+    mov di, 15
+    call os_draw_block
+
+    ; first string (AX)
+    mov dl, 20
+    mov dh, 10
+    call os_move_cursor
+    pop si
+    call os_print_string
+
+    ; second string (BX)
+    mov dl, 20
+    mov dh, 11
+    call os_move_cursor
+    pop si
+    call os_print_string
+
+    ; third string (CX)
+    mov dl, 20
+    mov dh, 12
+    call os_move_cursor
+    pop si
+    call os_print_string
+
+    mov bp, 0
+
+    ; draw buttons (DX)
+    pop dx
+    or dx, dx
+    jz .loop_ok_only
+
+.loop_ok_cancel:
+    
+    mov bl, 0f0h
+    or bp, bp
+    jz .is_ok
+    mov bl, 4fh
+.is_ok:
+
+    mov dl, 27
+    mov dh, 14
+    mov si, 8
+    mov di, 14
+    call os_draw_block
+
+    mov dl, 28
+    mov dh, 14
+    call os_move_cursor
+    mov si, .ok_btn
+    call os_print_string
+
+    mov bl, 0f0h
+    or bp, bp
+    jnz .is_cancel
+    mov bl, 4fh
+.is_cancel:
+
+    mov dl, 45
+    mov dh, 14
+    mov si, 8
+    mov di, 14
+    call os_draw_block
+
+    mov dl, 46
+    mov dh, 14
+    call os_move_cursor
+    mov si, .cancel_btn
+    call os_print_string
+
+    call os_wait_for_key
+    cmp al, 13
+    je .enter
+    cmp ah, 4bh
+    je .left
+    cmp ah, 4dh
+    je .right
+
+    jmp .loop_ok_cancel
+
+.left:
+    mov bp, 0
+    jmp .loop_ok_cancel
+.right:
+    mov bp, 1
+    jmp .loop_ok_cancel
+.enter:
+    or bp, bp
+    jz .ok_selected
+    jmp .cancel_selected
+
+.loop_ok_only:
+
+    mov bl, 0f0h
+    mov dl, 36
+    mov dh, 14
+    mov si, 8
+    mov di, 14
+    call os_draw_block
+
+    mov dl, 37
+    mov dh, 14
+    call os_move_cursor
+    mov si, .ok_btn
+    call os_print_string
+
+    call os_wait_for_key
+    cmp al, 13
+    je .ok_selected
+
+    jmp .loop_ok_only
+
+.cancel_selected:
+    popa
+    mov ax, 1
+    ret
+
+.ok_selected:
+    popa
+    mov ax, 0
+    ret
+
+.ok_btn         db '  OK  ', 0
+.cancel_btn     db 'Cancel', 0

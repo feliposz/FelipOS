@@ -1,7 +1,13 @@
 os_command_line:
     call os_clear_screen
 
-    jmp cmd_ver
+    mov si, version_msg
+    call os_print_string
+
+    mov si, help_msg
+    call os_print_string
+
+    jmp get_command
 
 get_command:
     mov si, prompt
