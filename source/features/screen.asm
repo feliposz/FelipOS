@@ -3,7 +3,10 @@
 ; IN: SI = message location (zero-terminated string)
 ; OUT: Nothing (registers preserved)
 os_print_string:
-    pusha
+    push ax
+    push si
+    or si, si
+    jz .done
     mov ah, 0eh       ; print character
 .loop:
     lodsb
@@ -12,7 +15,8 @@ os_print_string:
     int 10h           ; bios video services
     jmp .loop
 .done:
-    popa
+    pop si
+    pop ax
     ret
 
 ; ==========================================================
@@ -506,3 +510,220 @@ os_dialog_box:
 
 .ok_btn         db '  OK  ', 0
 .cancel_btn     db 'Cancel', 0
+
+; ==========================================================
+; os_file_selector -- Show a file selection dialog
+; IN: Nothing
+; OUT: AX = location of filename string (or carry set if Esc pressed)
+os_file_selector:
+    push si
+    push bx
+    push cx
+    mov ax, user_space
+    call os_get_file_list
+    mov si, ax
+    mov bx, .file_dialog_1
+    mov cx, .file_dialog_2
+    call os_list_dialog
+    jc .no_selection
+
+    ; get Nth item from the list
+    mov cx, ax
+.next_item:
+    dec cx
+    mov al, ','
+    call os_string_tokenize
+    or di, di
+    jz .done
+    or cx, cx
+    jz .split_item
+    mov si, di
+    jmp .next_item
+.split_item:
+    mov byte [di-1], 0
+
+.done:
+    mov ax, si
+    pop cx
+    pop bx
+    pop si
+    clc
+    ret
+
+.no_selection:
+    pop cx
+    pop bx
+    pop si
+    xor ax, ax
+    stc
+    ret
+
+.file_dialog_1 db 'Select file using ', 24, ' and ', 25 , ' keys.', 0
+.file_dialog_2 db 'Press ENTER to proceed, ESC to cancel.', 0
+
+; ==========================================================
+; os_list_dialog -- Show a dialog with a list of options
+; IN: AX = comma-separated list of strings to show (zero-terminated), BX = first help string, CX = second help string
+; OUT: AX = number (starts from 1) of entry selected; carry set if Esc pressed
+os_list_dialog:
+    pusha
+    push cx
+    push bx
+    mov [.list], ax
+    mov word [.offset], 0
+    mov word [.selected], 1
+
+    ; dialog background
+    mov bl, 4fh
+    mov dl, 19
+    mov dh, 2
+    mov si, 42
+    mov di, 22
+    call os_draw_block
+
+    ; first string (BX)
+    mov dl, 20
+    mov dh, 3
+    call os_move_cursor
+    pop si
+    call os_print_string
+
+    ; second string (CX)
+    mov dl, 20
+    mov dh, 4
+    call os_move_cursor
+    pop si
+    call os_print_string
+
+    xor cx, cx
+    mov si, [.list]
+.count_items:
+    inc cx
+    mov al, ','
+    call os_string_tokenize
+    mov si, di
+    or di, di
+    jnz .count_items
+    mov [.count], cx
+
+.loop_list:
+
+    ; list background
+    mov bl, 0f0h
+    mov dl, 20
+    mov dh, 6
+    mov si, 40
+    mov di, 21
+    call os_draw_block
+
+    ; selected line
+    mov dx, [.selected]
+    sub dx, [.offset]
+    add dx, 6
+    mov di, dx
+    mov dh, dl
+    mov dl, 21
+    mov bl, 0fh
+    mov si, 38
+    call os_draw_block
+
+    ; display list
+
+    mov si, [.list]
+    mov cx, [.offset]
+.skip_items:
+    or cx, cx
+    jz .end_skip
+    mov al, ','
+    call os_string_tokenize
+    mov si, di
+    dec cx
+    jmp .skip_items
+.end_skip:
+
+    mov dl, 22
+    mov dh, 7
+
+.next_item:
+    cmp dh, 21
+    je .end_display
+
+    call os_move_cursor
+    mov al, ','
+    call os_string_tokenize
+    or di, di
+    jz .last_item
+
+    dec di
+    mov byte [di], 0
+    call os_print_string
+    mov byte [di], ','
+    mov si, di
+    inc si
+
+    inc dh
+    jmp .next_item
+
+.last_item:
+    call os_print_string
+.end_display:
+
+    call os_wait_for_key
+    cmp al, 13
+    je .item_selected
+    cmp al, 27
+    je .no_selection
+    cmp ah, 48h
+    je .move_up
+    cmp ah, 50h
+    je .move_down
+
+    jmp .loop_list
+
+.move_up:
+    dec word [.selected]
+    cmp word [.selected], 1
+    jl .limit_up
+    ; decrease offset if moving below 1 position
+    mov cx, [.offset]
+    cmp word [.selected], cx
+    jg .loop_list
+    dec word [.offset]
+    jmp .loop_list
+.limit_up:
+    mov word [.selected], 1
+    mov word [.offset], 0
+    jmp .loop_list
+
+.move_down:
+    inc word [.selected]
+    mov cx, [.count]
+    cmp [.selected], cx
+    jg .limit_down
+    ; increase offset if 15 lines below top
+    mov cx, [.offset]
+    add cx, 15
+    cmp [.selected], cx
+    jl .loop_list
+    inc word [.offset]
+    jmp .loop_list
+.limit_down:
+    mov [.selected], cx
+    jmp .loop_list
+
+.no_selection:
+    popa
+    xor ax, ax
+    stc
+    ret
+
+.item_selected:
+    popa
+    mov ax, [.selected]
+    clc
+    ret
+
+.list       dw 0
+.count      dw 0
+.offset     dw 0
+.selected   dw 0

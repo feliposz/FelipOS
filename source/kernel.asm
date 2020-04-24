@@ -36,7 +36,7 @@ bits 16
     jmp os_bcd_to_int             ; 0051h
     jmp os_get_time_string        ; 0054h
     jmp os_get_api_version        ; 0057h
-    jmp near __NOT_IMPLEMENTED__  ; os_file_selector          ; 005Ah
+    jmp os_file_selector          ; 005Ah
     jmp os_get_date_string        ; 005Dh
     jmp os_send_via_serial        ; 0060h
     jmp os_get_via_serial         ; 0063h
@@ -63,7 +63,7 @@ bits 16
     jmp os_rename_file            ; 00A2h
     jmp os_get_file_size          ; 00A5h
     jmp near __NOT_IMPLEMENTED__  ; os_input_dialog           ; 00A8h
-    jmp near __NOT_IMPLEMENTED__  ; os_list_dialog            ; 00ABh
+    jmp os_list_dialog            ; 00ABh
     jmp os_string_reverse         ; 00AEh
     jmp os_string_to_int          ; 00B1h
     jmp os_draw_block             ; 00B4h
@@ -91,7 +91,7 @@ kernel_start:
     call disk_init
     call os_seed_random
 
-kernel_main:
+.option_screen:
 
     call os_hide_cursor
 
@@ -107,13 +107,85 @@ kernel_main:
     call os_dialog_box
 
     or ax, ax
-    jz kernel_main
+    jz .app_selector
 
     ; start CLI
     call os_show_cursor
     call os_command_line
 
-    jmp kernel_main
+    jmp .option_screen
+
+.app_selector:
+
+    call os_hide_cursor
+
+    mov ax, header_msg
+    mov bx, footer_msg
+    mov cx, 1Fh
+    call os_draw_background
+
+    call os_file_selector
+    jc .option_screen
+
+    mov dx, ax
+
+    ; has extension?
+    mov si, dx
+    mov al, '.'
+    call os_find_char_in_string
+    or ax, ax
+    jz .bin_error
+
+    call os_print_2hex
+
+    ; is .BIN?
+    mov si, dx
+    add si, ax
+    dec si
+    mov di, bin_ext
+    call os_string_compare
+    jnc .bin_error
+
+    ; is kernel?
+    mov si, dx
+    mov di, kernel_name
+    call os_string_compare
+    jc .kernel_error
+
+    ; load program
+    mov ax, dx
+    mov si, 0
+    mov cx, user_space
+    call os_load_file
+    jc .bin_error
+
+    ; execute program
+    call os_show_cursor
+    call os_clear_screen
+    call user_space
+
+    ; wait key press
+    mov si, pause_msg
+    call os_print_string
+    call os_wait_for_key
+
+    jmp .app_selector
+
+.bin_error:
+    mov ax, bin_msg
+    mov bx, 0
+    mov cx, 0
+    mov dx, 0
+    call os_dialog_box
+    jmp .app_selector
+
+.kernel_error:
+    mov ax, kernel_msg
+    mov bx, 0
+    mov cx, 0
+    mov dx, 0
+    call os_dialog_box
+    jmp .app_selector
 
 __NOT_IMPLEMENTED__:
     mov ax, not_imp_msg
@@ -138,3 +210,5 @@ welcome1_msg    db 'Welcome! Thanks for using FelipOS!', 0
 welcome2_msg    db 'Please, select OK for program menu or', 0
 welcome3_msg    db 'Cancel for command line.', 0
 not_imp_msg     db 'SYSTEM CALL NOT IMPLEMENTED', 13, 10, 0
+bin_msg         db 'Not a valid BIN program.', 0
+pause_msg       db '>>> Program ended. Press any key to continue.', 0
