@@ -6,18 +6,21 @@ A simple OS programmed in x86 Assembly real mode (16-bit) inspired by [MikeOS](h
 
 - Netwide Assembler (NASM)
 - ImDisk tools
-- QEMU
+- QEMU, Bochs or similar for emulation
+- A 1.44MB floppy disk or USB key for real hardware
 
 ## Features
 
-- A simple bootloader
-- A basic kernel with a command line (shell) and a few commands
-- Code is a complete rewrite and tries to keep compatibility with MikeOS system calls/interface
-- (Probably) Lots of bugs!
+- A bootloader that can search for a kernel file on the root directory, load and execute it.
+- A basic kernel with a command line (shell), some builtin commands and a "graphical" menu.
+- Can execute external binary programs.
+- Code is a complete rewrite and tries to keep compatibility with MikeOS system calls/interface.
+    - Runs *most* original binary programs for MikeOS. \o/
+- ~~(Probably)~~  Lots of bugs!
 
 ## Notes
 
-- Some random notes written while studying the source for MikeOS.
+- Some random notes taken when studying the source for MikeOS.
 
 ## Testing
 
