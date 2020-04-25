@@ -10,7 +10,7 @@ bits 16
     jmp os_print_string           ; 0003h
     jmp os_move_cursor            ; 0006h
     jmp os_clear_screen           ; 0009h
-    jmp near __NOT_IMPLEMENTED__  ; os_print_horiz_line       ; 000Ch
+    jmp os_print_horiz_line       ; 000Ch
     jmp os_print_newline          ; 000Fh
     jmp os_wait_for_key           ; 0012h
     jmp os_check_for_key          ; 0015h
@@ -43,7 +43,7 @@ bits 16
     jmp os_find_char_in_string    ; 0066h
     jmp os_get_cursor_pos         ; 0069h
     jmp os_print_space            ; 006Ch
-    jmp near __NOT_IMPLEMENTED__  ; os_dump_string            ; 006Fh
+    jmp os_dump_string            ; 006Fh
     jmp os_print_digit            ; 0072h
     jmp os_print_1hex             ; 0075h
     jmp os_print_2hex             ; 0078h
@@ -62,7 +62,7 @@ bits 16
     jmp os_remove_file            ; 009Fh
     jmp os_rename_file            ; 00A2h
     jmp os_get_file_size          ; 00A5h
-    jmp near __NOT_IMPLEMENTED__  ; os_input_dialog           ; 00A8h
+    jmp os_input_dialog           ; 00A8h
     jmp os_list_dialog            ; 00ABh
     jmp os_string_reverse         ; 00AEh
     jmp os_string_to_int          ; 00B1h

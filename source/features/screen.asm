@@ -50,6 +50,124 @@ os_print_newline:
     ret
 
 ; ==========================================================
+; os_print_horiz_line -- Draw a horizontal line on the screen
+; IN: AX = line type (1 for double (-), otherwise single (=))
+; OUT: Nothing (registers preserved)
+os_print_horiz_line:
+    push ax
+    push cx
+    mov cx, 80
+    mov ah, 0eh
+    cmp al, 1
+    jne .single
+    mov al, 205 ; double
+    jmp .print
+.single:
+    mov al, 196 ; single
+.print:
+    int 10h
+    loop .print
+    pop cx
+    pop ax
+    ret
+
+; ==========================================================
+; os_dump_string -- Dump string as hex bytes and printable characters
+; IN: SI = points to string to dump
+os_dump_string:
+    pusha
+
+    ; save start of string on DI
+    mov di, si
+
+    ; save one past end of string on DX
+    mov ax, si
+    call os_string_length
+    mov dx, ax
+    add dx, si
+    inc dx
+
+    push si
+    mov si, .header1
+    call os_print_string
+    call os_print_newline
+    mov si, .header2
+    call os_print_string
+    call os_print_newline
+    pop si
+
+    and si, 0fff0h  ; start dump at zero boundary
+
+.loop:
+    cmp si, dx
+    jg .end_loop
+
+    mov ax, si
+    call os_print_4hex
+    mov ah, 0eh
+    mov al, ':'
+    int 10h
+    mov al, ' '
+    int 10h
+
+    mov cx, 16
+.loop_hex:
+    cmp si, di
+    je .open_string
+    cmp si, dx
+    je .close_string 
+    jmp .print_hex
+.open_string:
+    mov ah, 0eh
+    mov al, 8 ; backspace
+    int 10h
+    mov al, 1ah
+    int 10h
+    jmp .print_hex
+.close_string:
+    mov ah, 0eh
+    mov al, 8 ; backspace
+    int 10h
+    mov al, 1bh
+    int 10h
+.print_hex:
+    lodsb
+    call os_print_2hex
+    call os_print_space
+    loop .loop_hex
+
+    mov ah, 0eh
+    mov al, ' '
+    int 10h
+
+    mov cx, 16
+    sub si, cx
+    mov ah, 0eh
+.print_char:
+    lodsb
+    cmp al, ' '
+    jb .non_printable
+    cmp al, '~'
+    ja .non_printable
+    jmp .printable
+.non_printable:
+    mov al, '.'
+.printable:
+    int 10h
+    loop .print_char
+
+    call os_print_newline
+    jmp .loop
+.end_loop:
+
+    call os_print_newline
+    popa
+    ret
+
+.header1 db 'Addr  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F   0123456789ABCDEF', 0 
+.header2 db '----  -----------------------------------------------  ----------------', 0
+
+; ==========================================================
 ; os_input_string -- Get a string from keyboard input
 ; - IN: AX = output address, BX = maximum bytes of output string
 ; - OUT: nothing
@@ -727,3 +845,39 @@ os_list_dialog:
 .count      dw 0
 .offset     dw 0
 .selected   dw 0
+
+; ==========================================================
+; os_input_dialog -- Get text string from user via a dialog box
+; IN: AX = string location, BX = message to show
+; OUT: AX = string location
+os_input_dialog:
+    pusha
+    push ax     ; save string location
+    push bx     ; save message to show
+
+    mov bl, 4fh
+    mov dl, 12
+    mov dh, 10
+    mov si, 55
+    mov di, 15
+    call os_draw_block
+
+    mov dl, 14
+    mov dh, 11
+    call os_move_cursor
+    pop si      ; restore message to show
+    call os_print_string
+
+    call os_show_cursor
+
+    mov dl, 14
+    mov dh, 13
+    call os_move_cursor
+    mov bx, 49
+    pop ax      ; restore string location
+    call os_input_string
+
+    call os_hide_cursor
+
+    popa
+    ret
