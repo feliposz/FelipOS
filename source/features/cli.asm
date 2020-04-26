@@ -146,10 +146,15 @@ get_command:
 
 .load_bin:
     mov ax, si
-    mov si, [param_list]
     mov cx, user_space
     call os_load_file
     jc .not_bin
+    mov ax, 0
+    mov bx, 0
+    mov cx, 0
+    mov dx, 0
+    mov si, [param_list]
+    mov di, 0
     call user_space
     jmp get_command
 

@@ -162,6 +162,12 @@ kernel_start:
     ; execute program
     call os_show_cursor
     call os_clear_screen
+    mov ax, 0
+    mov bx, 0
+    mov cx, 0
+    mov dx, 0
+    mov si, 0
+    mov di, 0    
     call user_space
 
     ; wait key press

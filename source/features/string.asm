@@ -171,6 +171,7 @@ os_set_time_fmt:
 ; If AX bit 7 = 1 = use name for months
 ; If AX bit 7 = 0, high byte = separator character
 os_set_date_fmt:
+    push ax
     test ax, 1<<7
     jnz .no_sep
     mov byte [date_mon], 0
@@ -182,6 +183,7 @@ os_set_date_fmt:
 .sep:
     and al, 3
     mov [date_fmt], al
+    pop ax
     ret
 
 ; ==========================================================

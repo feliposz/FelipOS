@@ -3,6 +3,15 @@ org 32768
 
     %define API_VERSION 17
 
+    %define KEY_UP      72
+    %define KEY_DOWN    80
+    %define KEY_LEFT    75
+    %define KEY_RIGHT   77
+    %define KEY_ENTER   13
+    %define KEY_ESC     27
+
+    %define BLACK_ON_WHITE 0f0h
+
     kernel_start              equ 0000h
     os_print_string           equ 0003h
     os_move_cursor            equ 0006h

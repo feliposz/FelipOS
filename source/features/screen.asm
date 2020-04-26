@@ -40,13 +40,13 @@ os_clear_screen:
 ; os_print_newline -- Reset cursor to start of next line
 ; - IN/OUT: Nothing (registers preserved)
 os_print_newline:
-    pusha
+    push ax
     mov ah, 0eh
     mov al, 0dh       ; CR
     int 10h
     mov al, 0ah       ; LF
     int 10h
-    popa
+    pop ax
     ret
 
 ; ==========================================================
@@ -500,6 +500,8 @@ os_dialog_box:
     push bx
     push ax
 
+    call os_hide_cursor
+
     ; background
     mov bl, 4fh
     mov dl, 19
@@ -595,6 +597,18 @@ os_dialog_box:
     jz .ok_selected
     jmp .cancel_selected
 
+.cancel_selected:
+    call os_show_cursor
+    popa
+    mov ax, 1
+    ret
+
+.ok_selected:
+    call os_show_cursor
+    popa
+    mov ax, 0
+    ret
+
 .loop_ok_only:
 
     mov bl, 0f0h
@@ -610,20 +624,13 @@ os_dialog_box:
     mov si, .ok_btn
     call os_print_string
 
+.wait_enter:
     call os_wait_for_key
     cmp al, 13
-    je .ok_selected
+    jne .wait_enter
 
-    jmp .loop_ok_only
-
-.cancel_selected:
+    call os_show_cursor
     popa
-    mov ax, 1
-    ret
-
-.ok_selected:
-    popa
-    mov ax, 0
     ret
 
 .ok_btn         db '  OK  ', 0
@@ -637,7 +644,7 @@ os_file_selector:
     push si
     push bx
     push cx
-    mov ax, user_space
+    mov ax, .file_list
     call os_get_file_list
     mov si, ax
     mov bx, .file_dialog_1
@@ -678,6 +685,7 @@ os_file_selector:
 
 .file_dialog_1 db 'Select file using ', 24, ' and ', 25 , ' keys.', 0
 .file_dialog_2 db 'Press ENTER to proceed, ESC to cancel.', 0
+.file_list     times 2912 db 0
 
 ; ==========================================================
 ; os_list_dialog -- Show a dialog with a list of options
@@ -690,6 +698,8 @@ os_list_dialog:
     mov [.list], ax
     mov word [.offset], 0
     mov word [.selected], 1
+
+    call os_hide_cursor
 
     ; dialog background
     mov bl, 4fh
@@ -830,12 +840,14 @@ os_list_dialog:
     jmp .loop_list
 
 .no_selection:
+    call os_show_cursor
     popa
     xor ax, ax
     stc
     ret
 
 .item_selected:
+    call os_show_cursor
     popa
     mov ax, [.selected]
     clc
@@ -876,8 +888,6 @@ os_input_dialog:
     mov bx, 49
     pop ax      ; restore string location
     call os_input_string
-
-    call os_hide_cursor
 
     popa
     ret
