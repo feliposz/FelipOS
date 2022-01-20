@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>FelipOS Live Demo</title>
+</head>
+
+<body>
+
+    <h3>FelipOS Live Demo</h3>
+
+    <button onclick="emulator.Ve()">Start</button>
+    <button onclick="emulator.tf()">Reset</button>
+
+    <hr>
+
+    <div id="screen_container">
+        <div style="white-space: pre; font: 14px monospace; line-height: 16px"></div>
+        <canvas style="display: none"></canvas>
+    </div>
+
+    <hr>
+
+    <h3>Serial port</h3>
+
+    <div>
+        <textarea rows=25 cols=60 id="serial_container"></textarea>
+    </div>
+
+    <!-- <script src="v86/build/libv86.js"></script> -->
+    <script src="v86/build/v86_all.js"></script>
+    <script>
+        "use strict";
+
+        window.onload = function () {
+            var emulator = window.emulator = new V86Starter({
+                wasm_path: "v86/build/v86.wasm",
+                memory_size: 1 * 1024 * 1024,
+                vga_memory_size: 1 * 1024 * 1024,
+                screen_container: document.getElementById("screen_container"),
+                serial_container: document.getElementById("serial_container"),
+                bios: {
+                    url: "v86/bios/seabios.bin",
+                },
+                vga_bios: {
+                    url: "v86/bios/vgabios.bin",
+                },
+                fda: {
+                    url: "v86/images/felipos.flp",
+                },
+                autostart: false,
+            });
+        }
+    </script>
+
+
+</body>
+
+</html>

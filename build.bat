@@ -36,7 +36,15 @@ copy bin\kernel.bin b:\
 echo * Copying programs *
 copy programs\*.bin b:\
 echo test > b:\test.txt
-copy ..\..\mikeos-4.6.1\programs\*.bin b:\
+copy ..\mikeos\edit.bin b:\
+copy ..\mikeos\fileman.bin b:\
+copy ..\mikeos\fisher.bin b:\
+copy ..\mikeos\forth.bin b:\
+copy ..\mikeos\hangman.bin b:\
+copy ..\mikeos\keyboard.bin b:\
+copy ..\mikeos\monitor.bin b:\
+copy ..\mikeos\serial.bin b:\
+copy ..\mikeos\viewer.bin b:\
 dir b:
 
 echo * Dismounting image *
