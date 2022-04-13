@@ -404,7 +404,7 @@ os_get_date_string:
 
 ; ==========================================================
 ; os_int_to_string -- Convert unsigned integer to string
-; IN: AX = signed int
+; IN: AX = unsigned int
 ; OUT: AX = string location
 os_int_to_string:
     pusha
